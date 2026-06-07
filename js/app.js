@@ -394,6 +394,7 @@ function switchAnalysisTab(tab) {
   document.getElementById('atab-' + tab).classList.add('active');
   document.getElementById('analysis-' + tab).classList.add('active');
   if (tab === 'tool') initMarketCards();
+  if (tab === 'dcircle') startDcircle();
 }
 
 function dcircleMarketChange() {
