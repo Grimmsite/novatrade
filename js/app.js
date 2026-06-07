@@ -592,10 +592,10 @@ function createMarketCard(symbol) {
       ${[0,1,2,3,4,5,6,7,8,9].map(d => `
         <div class="digit-ring" id="dring-${symbol}-${d}">
           <div class="ring-container">
-            <svg class="ring-svg" width="72" height="72" viewBox="0 0 72 72">
-              <circle class="ring-bg" cx="36" cy="36" r="30"/>
-              <circle class="ring-fill" id="rfill-${symbol}-${d}" cx="36" cy="36" r="30"
-                stroke-dasharray="0 188.5" />
+            <svg class="ring-svg" width="66" height="66" viewBox="0 0 66 66">
+              <circle class="ring-bg" cx="33" cy="33" r="27"/>
+              <circle class="ring-fill" id="rfill-${symbol}-${d}" cx="33" cy="33" r="27"
+                stroke-dasharray="0 169.6" />
             </svg>
             <div class="ring-label">
               <span class="ring-num">${d}</span>
@@ -659,7 +659,7 @@ function updateMarketCard(symbol) {
   const leastIdx = sorted[sorted.length - 1].i;
   const secondLeastIdx = sorted[sorted.length - 2].i;
 
-  const CIRC = 2 * Math.PI * 30;
+  const CIRC = 2 * Math.PI * 27;
 
   for (let d = 0; d < 10; d++) {
     const pct = pcts[d];
