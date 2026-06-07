@@ -698,22 +698,9 @@ function updateMarketCard(symbol) {
     const oldDot = ringEl.querySelector(".current-dot");
     if (oldDot) oldDot.remove();
     if (d === lastD) {
-      const pct = pcts[d];
-      const angle = (pct * 2 * Math.PI) - Math.PI/2;
-      const cx = 36 + 30 * Math.cos(angle);
-      const cy = 36 + 30 * Math.sin(angle);
-      const svg = ringEl.querySelector('.ring-svg');
-      const oldSvgDot = svg.querySelector('.current-dot-svg');
-      if (oldSvgDot) oldSvgDot.remove();
-      const dotEl = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dotEl.setAttribute('class', 'current-dot-svg');
-      dotEl.setAttribute('cx', cx.toFixed(2));
-      dotEl.setAttribute('cy', cy.toFixed(2));
-      dotEl.setAttribute('r', '5');
-      dotEl.setAttribute('fill', '#ff6600');
-      dotEl.setAttribute('stroke', '#fff');
-      dotEl.setAttribute('stroke-width', '2');
-      svg.appendChild(dotEl);
+      const dot = document.createElement("div");
+      dot.className = "current-dot";
+      ringEl.querySelector(".ring-container").appendChild(dot);
     }
   }
   // Last digits row (last 10)
