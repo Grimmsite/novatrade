@@ -2476,3 +2476,8 @@ body {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ── REMOVE INNER CIRCLE ── */
+.ring-bg {
+  display: none !important;
+}
