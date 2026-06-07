@@ -4,27 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NovaTrade – Your Ultimate Companion in Deriv Automations</title>
+  <meta name="description" content="NovaTrade – Free Deriv trading bots, analysis tools, and automated strategies for new and expert traders." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-
 <header class="navbar" id="navbar">
   <div class="nav-left">
+    <button class="hamburger" id="hamburgerBtn" aria-label="Menu">&#9776;</button>
     <div class="logo" onclick="navigate('dashboard')">
       <span class="logo-icon">◈</span>
-      <div class="logo-text-wrap">
-        <span class="logo-text">Nova<span class="logo-accent">Trade</span></span>
-        <span class="logo-sub">powered by <span style="color:var(--gold)">deriv</span></span>
-      </div>
+      <span class="logo-text">Nova<span class="logo-accent">Trade</span></span>
     </div>
-    <button class="chat-btn" title="Support">💬</button>
   </div>
+  <nav class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">⌂</span> Dashboard</button>
+    <button class="nav-tab" data-page="bot-builder" onclick="navigate('bot-builder')"><span class="nav-icon">⚙</span> Bot Builder</button>
+    <button class="nav-tab" data-page="analysis" onclick="navigate('analysis')"><span class="nav-icon">◎</span> Analysis Tools</button>
+    <button class="nav-tab" data-page="free-bots" onclick="navigate('free-bots')"><span class="nav-icon">🤖</span> Free Bots</button>
+  </nav>
   <div class="nav-right">
-    <button class="btn-login" onclick="showLoginModal()">Log In</button>
     <button class="btn-secondary" onclick="showApiModal()">API Token</button>
+    <button class="btn-login" onclick="showLoginModal()">Log In</button>
     <button class="btn-signup" onclick="showSignupModal()">Sign Up</button>
     <div class="user-badge hidden" id="userBadge" onclick="showAccountMenu()">
       <span id="userInitials">NT</span>
@@ -32,121 +35,66 @@
     </div>
   </div>
 </header>
-
-<nav class="page-nav" id="pageNav">
-  <button class="pnav-tab active" data-page="dashboard" onclick="navigate('dashboard')"><span class="pnav-icon">🏠</span> Dashboard</button>
-  <button class="pnav-tab" data-page="bot-builder" onclick="navigate('bot-builder')"><span class="pnav-icon">⚙️</span> Bot Builder</button>
-  <button class="pnav-tab" data-page="analysis" onclick="navigate('analysis')"><span class="pnav-icon">🔍</span> Analysistools</button>
-  <button class="pnav-tab" data-page="free-bots" onclick="navigate('free-bots')"><span class="pnav-icon">🤖</span> Free Bots</button>
-  <button class="pnav-tab" data-page="auto-trader" onclick="navigate('auto-trader')"><span class="pnav-icon">🔥</span> Auto Trader</button>
-  <button class="pnav-tab" data-page="ultimate-bot" onclick="navigate('ultimate-bot')"><span class="pnav-icon">⚡</span> Ultimate Bot</button>
-  <button class="pnav-tab" data-page="dtrader" onclick="navigate('dtrader')"><span class="pnav-icon">📺</span> DTrader</button>
-  <button class="pnav-tab" data-page="manual-trading" onclick="navigate('manual-trading')"><span class="pnav-icon">📈</span> Manual Trading</button>
-  <button class="pnav-tab" data-page="speedbot" onclick="navigate('speedbot')"><span class="pnav-icon">🚀</span> Speedbot</button>
-</nav>
-
 <div class="risk-banner" id="riskBanner">
-  <span>⚠️ Risk Disclaimer</span>
+  <span>⚠️</span>
+  <span>Risk Warning: Trading involves risk. Never trade with money you cannot afford to lose.</span>
   <button onclick="dismissRisk()">✕</button>
 </div>
-
 <main id="appContainer">
-
-  <!-- DASHBOARD -->
   <section id="page-dashboard" class="page active">
-    <div class="dashboard-layout">
-      <div class="dashboard-main">
-
-        <div class="dashboard-hero">
-          <h1 class="hero-title">Hello</h1>
-          <p class="hero-quote" id="heroQuote">"📝 Winners follow their strategy, not emotions."</p>
+    <div class="dashboard-hero">
+      <div class="hero-top">
+        <div class="hero-text">
+          <h1 class="hero-title">Hello Trader!</h1>
+          <p class="hero-quote" id="heroQuote">"🚀 Every tick is an opportunity. Stay ready."</p>
         </div>
-
-        <div class="dash-cards-row">
-          <div class="dash-card" onclick="navigate('bot-builder')">
-            <div class="dash-card-icon">📁</div>
-            <div class="dash-card-text"><h3>Load Bot</h3><p>Import an XML strategy from your device.</p></div>
-            <span class="dash-arrow">-></span>
-          </div>
-          <div class="dash-card" onclick="navigate('speedbot')">
-            <div class="dash-card-icon">🚀</div>
-            <div class="dash-card-text"><h3>Speed Bot</h3><p>Build a guided strategy quickly.</p></div>
-            <span class="dash-arrow">-></span>
-          </div>
-          <div class="dash-card premium-card" onclick="navigate('free-bots')">
-            <div class="dash-card-icon">👑</div>
-            <div class="dash-card-text"><h3>Premium Bots</h3><p>Open advanced ready-made bots.</p></div>
-            <span class="dash-arrow">-></span>
-          </div>
-          <div class="dash-card" onclick="navigate('free-bots')">
-            <div class="dash-card-icon">🤖</div>
-            <div class="dash-card-text"><h3>Free Bots</h3><p>Browse free strategies to load and edit.</p></div>
-            <span class="dash-arrow">-></span>
-          </div>
-        </div>
-
-        <div class="signals-section">
-          <div class="signals-title">SIGNALS</div>
-          <div class="signals-grid" id="signalsGrid">
-            <div class="signal-card loading"><span class="signal-num">#1</span><span class="signal-market">Loading...</span></div>
-            <div class="signal-card loading"><span class="signal-num">#2</span><span class="signal-market">Loading...</span></div>
-            <div class="signal-card loading"><span class="signal-num">#3</span><span class="signal-market">Loading...</span></div>
-            <div class="signal-card loading"><span class="signal-num">#4</span><span class="signal-market">Loading...</span></div>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="dashboard-sidebar" id="dashSidebar">
-        <div class="sidebar-toggle" onclick="toggleSidebar()">⟫</div>
-        <div class="summary-tabs">
-          <button class="stab active" onclick="switchSummaryTab('summary',this)">Summary</button>
-          <button class="stab" onclick="switchSummaryTab('transactions',this)">Transactions</button>
-          <button class="stab" onclick="switchSummaryTab('journal',this)">Journal</button>
-        </div>
-
-        <div class="summary-content" id="summaryContent">
-          <div class="summary-empty">
-            <p>When you're ready to trade, hit <strong>Run</strong>. You'll be able to track your bot's performance here.</p>
-          </div>
-          <div class="what-this"><a href="#" onclick="return false">What's this?</a></div>
-          <div class="summary-stats">
-            <div class="sstat"><span class="sstat-label">Total stake</span><span class="sstat-val" id="totalStake">0.00 AUD</span></div>
-            <div class="sstat"><span class="sstat-label">Total payout</span><span class="sstat-val" id="totalPayout">0.00 AUD</span></div>
-            <div class="sstat"><span class="sstat-label">No. of runs</span><span class="sstat-val" id="numRuns">0</span></div>
-            <div class="sstat"><span class="sstat-label">Contracts lost</span><span class="sstat-val" id="contractsLost">0</span></div>
-            <div class="sstat"><span class="sstat-label">Contracts won</span><span class="sstat-val" id="contractsWon">0</span></div>
-            <div class="sstat"><span class="sstat-label">Total profit/loss</span><span class="sstat-val" id="totalPnl">0.00 AUD</span></div>
-          </div>
-          <button class="reset-btn" onclick="resetStats()">Reset</button>
-        </div>
-
-        <div class="summary-content hidden" id="transactionsContent">
-          <div class="summary-empty"><p>No transactions yet.</p></div>
-        </div>
-
-        <div class="summary-content hidden" id="journalContent">
-          <div class="summary-empty"><p>Journal is empty.</p></div>
+        <div class="hero-stats">
+          <div class="hero-stat"><span class="hstat-label">Status</span><span class="hstat-val online">● Online</span></div>
+          <div class="hero-stat"><span class="hstat-label">Balance</span><span class="hstat-val" id="heroBalance">—</span></div>
+          <div class="hero-stat"><span class="hstat-label">Today P/L</span><span class="hstat-val" id="heroPnl">—</span></div>
         </div>
       </div>
     </div>
-
+    <div class="dashboard-grid">
+      <div class="dash-card" onclick="navigate('bot-builder')">
+        <div class="dash-card-icon">📁</div>
+        <div class="dash-card-text"><h3>Load Bot</h3><p>Import an XML strategy from your device.</p></div>
+        <span class="dash-arrow">→</span>
+      </div>
+      <div class="dash-card" onclick="navigate('bot-builder')">
+        <div class="dash-card-icon">🚀</div>
+        <div class="dash-card-text"><h3>Speed Bot</h3><p>Build a guided strategy quickly.</p></div>
+        <span class="dash-arrow">→</span>
+      </div>
+      <div class="dash-card premium-card" onclick="navigate('free-bots')">
+        <div class="dash-card-icon">👑</div>
+        <div class="dash-card-text"><h3>Premium Bots</h3><p>Open advanced ready-made bots.</p></div>
+        <span class="dash-arrow">→</span>
+      </div>
+      <div class="dash-card" onclick="navigate('free-bots')">
+        <div class="dash-card-icon">🤖</div>
+        <div class="dash-card-text"><h3>Free Bots</h3><p>Browse free strategies to load and edit.</p></div>
+        <span class="dash-arrow">→</span>
+      </div>
+      <div class="dash-card" onclick="navigate('analysis')">
+        <div class="dash-card-icon">📊</div>
+        <div class="dash-card-text"><h3>Analysis Tool</h3><p>Study signals before opening trades.</p></div>
+        <span class="dash-arrow">→</span>
+      </div>
+      <div class="dash-card" onclick="navigate('auto-trader')">
+        <div class="dash-card-icon">⚡</div>
+        <div class="dash-card-text"><h3>Auto Trader</h3><p>Automated trades with proven strategies.</p></div>
+        <span class="dash-arrow">→</span>
+      </div>
+    </div>
     <div class="run-bar">
       <button class="run-btn" onclick="toggleBot()"><span class="run-icon">▶</span> Run</button>
       <div class="execution-info">
         <span class="exec-label">Execution</span>
-        <span class="exec-speed" id="execSpeed" onclick="toggleExecSpeed()">SLOW</span>
-      </div>
-      <div class="run-bar-right">
-        <span class="copy-text">© 2026 NovaTrade</span>
-        <span class="run-dot online"></span>
-        <span class="run-time" id="runTime"></span>
-        <span class="run-lang">🌐 EN</span>
+        <span class="exec-speed" onclick="toggleExecSpeed()">SLOW</span>
       </div>
     </div>
   </section>
-
-  <!-- BOT BUILDER -->
   <section id="page-bot-builder" class="page">
     <div class="bot-builder-layout">
       <div class="builder-sidebar">
@@ -158,6 +106,8 @@
         <button class="sidebar-btn" title="Chart" onclick="showChart()">📈</button>
         <button class="sidebar-btn" title="Summary" onclick="showSummary()">📋</button>
         <button class="sidebar-btn" title="Transactions" onclick="showTransactions()">🎯</button>
+        <div class="sidebar-divider"></div>
+        <button class="sidebar-btn" title="Trade History" onclick="showHistory()">📉</button>
         <div class="sidebar-divider"></div>
         <button class="sidebar-btn" title="Undo" onclick="undoAction()">↩</button>
         <button class="sidebar-btn" title="Redo" onclick="redoAction()">↪</button>
@@ -195,12 +145,10 @@
       </div>
     </div>
   </section>
-
-  <!-- ANALYSIS -->
   <section id="page-analysis" class="page">
-    <div class="analysis-subnav">
-      <button class="asubtab active" id="atab-dcircle" onclick="switchAnalysisTab('dcircle')">🔵 DCIRCLE</button>
-      <button class="asubtab" id="atab-tool" onclick="switchAnalysisTab('tool')">📊 AnalysisTool</button>
+    <div class="analysis-tabs">
+      <button class="atab active" id="atab-dcircle" onclick="switchAnalysisTab('dcircle')">DCIRCLE</button>
+      <button class="atab" id="atab-tool" onclick="switchAnalysisTab('tool')">AnalysisTool</button>
     </div>
     <div id="analysis-dcircle" class="analysis-tab-content active">
       <div class="analysis-form-card">
@@ -213,11 +161,11 @@
             <option value="R_50">Volatility 50</option>
             <option value="R_75">Volatility 75</option>
             <option value="R_100">Volatility 100</option>
-            <option value="1HZ10V">Volatility 10 (1s) Index</option>
-            <option value="1HZ25V">Volatility 25 (1s) Index</option>
-            <option value="1HZ50V">Volatility 50 (1s) Index</option>
-            <option value="1HZ75V">Volatility 75 (1s) Index</option>
-            <option value="1HZ100V">Volatility 100 (1s) Index</option>
+            <option value="1HZ10V">Volatility 10 Index</option>
+            <option value="1HZ25V">Volatility 25 Index</option>
+            <option value="1HZ50V">Volatility 50 Index</option>
+            <option value="1HZ75V">Volatility 75 Index</option>
+            <option value="1HZ100V">Volatility 100 Index</option>
             <option value="JD10">Jump 10 Index</option>
             <option value="JD25">Jump 25 Index</option>
             <option value="JD50">Jump 50 Index</option>
@@ -244,8 +192,8 @@
           <div class="cp-last-digit">Last digit: <span id="dcircleLastDigit">—</span></div>
         </div>
         <div class="eo-result" id="eoResult">
-          <div class="eo-bar even-bar"><span class="eo-label">Even</span><span class="eo-pct" id="evenPct">—%</span></div>
-          <div class="eo-bar odd-bar"><span class="eo-label">Odd</span><span class="eo-pct" id="oddPct">—%</span></div>
+          <div class="eo-bar even-bar" id="evenBar"><span class="eo-label">Even</span><span class="eo-pct" id="evenPct">—%</span></div>
+          <div class="eo-bar odd-bar" id="oddBar"><span class="eo-label">Odd</span><span class="eo-pct" id="oddPct">—%</span></div>
         </div>
         <div class="signal-recommendation" id="signalRec">Waiting for data...</div>
       </div>
@@ -290,8 +238,6 @@
       <div class="bot-status-bar" id="botStatusBar">Bot is not running</div>
     </div>
   </section>
-
-  <!-- FREE BOTS -->
   <section id="page-free-bots" class="page">
     <div class="bots-header"><h2>Free & Premium Bots</h2><p>Browse, load, and edit ready-made strategies</p></div>
     <div class="bots-filter">
@@ -303,8 +249,6 @@
     </div>
     <div class="bots-grid" id="botsGrid"></div>
   </section>
-
-  <!-- AUTO TRADER -->
   <section id="page-auto-trader" class="page">
     <div class="auto-trader-container">
       <h2>Auto Trader</h2>
@@ -343,35 +287,12 @@
       </div>
     </div>
   </section>
-
-  <!-- ULTIMATE BOT -->
-  <section id="page-ultimate-bot" class="page">
-    <div class="coming-soon"><div class="cs-icon">⚡</div><h2>Ultimate Bot</h2><p>Premium advanced bot — coming soon.</p></div>
-  </section>
-
-  <!-- DTRADER -->
-  <section id="page-dtrader" class="page">
-    <div class="coming-soon"><div class="cs-icon">📺</div><h2>DTrader</h2><p>Manual trading interface — coming soon.</p></div>
-  </section>
-
-  <!-- MANUAL TRADING -->
-  <section id="page-manual-trading" class="page">
-    <div class="coming-soon"><div class="cs-icon">📈</div><h2>Manual Trading</h2><p>Manual trade placement — coming soon.</p></div>
-  </section>
-
-  <!-- SPEEDBOT -->
-  <section id="page-speedbot" class="page">
-    <div class="coming-soon"><div class="cs-icon">🚀</div><h2>Speedbot</h2><p>Quick strategy builder — coming soon.</p></div>
-  </section>
-
 </main>
-
-<!-- MODALS -->
 <div class="modal-overlay hidden" id="loginModal">
   <div class="modal">
     <div class="modal-header"><h3>Log In to NovaTrade</h3><button class="modal-close" onclick="closeModal('loginModal')">✕</button></div>
     <div class="modal-body">
-      <button class="oauth-btn" onclick="loginWithOAuth()">Continue with Deriv</button>
+      <button class="oauth-btn" onclick="loginWithOAuth()"><span>Continue with Deriv</span></button>
       <div class="divider"><span>or</span></div>
       <div class="form-group"><label>API Token</label><input type="password" id="loginTokenInput" placeholder="Paste your Deriv API token..." /></div>
       <button class="btn-primary full-width" onclick="loginWithToken()">Log In with Token</button>
@@ -379,12 +300,11 @@
     </div>
   </div>
 </div>
-
 <div class="modal-overlay hidden" id="apiModal">
   <div class="modal">
     <div class="modal-header"><h3>Connect API Token</h3><button class="modal-close" onclick="closeModal('apiModal')">✕</button></div>
     <div class="modal-body">
-      <p style="font-size:12px;color:var(--text-muted)">Enter your Deriv API token. <a href="https://app.deriv.com/account/api-token" target="_blank" rel="noopener" style="color:var(--gold)">Get your token here →</a></p>
+      <p>Enter your Deriv API token. <a href="https://app.deriv.com/account/api-token" target="_blank" rel="noopener">Get your token here →</a></p>
       <div class="form-group"><label>API Token</label><input type="password" id="apiTokenInput" placeholder="Enter your Deriv API token..." /></div>
       <div class="scope-note">⚠️ Make sure your token has <strong>Read</strong> and <strong>Trade</strong> scopes enabled.</div>
       <button class="btn-primary full-width" onclick="connectApiToken()">Connect Token</button>
@@ -392,19 +312,17 @@
     </div>
   </div>
 </div>
-
 <div class="modal-overlay hidden" id="signupModal">
   <div class="modal">
     <div class="modal-header"><h3>Get Started with NovaTrade</h3><button class="modal-close" onclick="closeModal('signupModal')">✕</button></div>
     <div class="modal-body">
-      <button class="oauth-btn" onclick="loginWithOAuth()">Sign Up / Log In with Deriv</button>
+      <button class="oauth-btn" onclick="loginWithOAuth()"><span>Sign Up / Log In with Deriv</span></button>
       <div class="divider"><span>or</span></div>
-      <a href="https://deriv.com/signup/" target="_blank" rel="noopener" class="btn-primary full-width" style="display:block;text-align:center;text-decoration:none;padding:12px;">Create Deriv Account →</a>
+      <a href="https://deriv.com/signup/" target="_blank" rel="noopener" class="btn-primary full-width" style="display:block;text-align:center;text-decoration:none;padding:12px;margin-bottom:12px;">Create Deriv Account →</a>
       <p class="modal-link">Already have an account? <button class="link-btn" onclick="closeModal('signupModal');showLoginModal()">Log in</button></p>
     </div>
   </div>
 </div>
-
 <div class="modal-overlay hidden" id="accountModal">
   <div class="modal">
     <div class="modal-header"><h3>My Account</h3><button class="modal-close" onclick="closeModal('accountModal')">✕</button></div>
@@ -421,7 +339,16 @@
     </div>
   </div>
 </div>
-
+<div class="modal-overlay hidden" id="vhModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Virtual Hook Settings</h3><button class="modal-close" onclick="closeModal('vhModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Simulation Balance</label><input type="number" id="vhBalance" value="1000" min="10" /></div>
+      <div class="form-group"><label>Stop simulation after loss of</label><input type="number" id="vhStopLoss" value="100" min="1" /></div>
+      <button class="btn-primary full-width" onclick="saveVHSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="quickStratModal">
   <div class="modal modal-wide">
     <div class="modal-header"><h3>⚡ Quick Strategy</h3><button class="modal-close" onclick="closeModal('quickStratModal')">✕</button></div>
@@ -435,12 +362,7 @@
     </div>
   </div>
 </div>
-
-<div class="oauth-loading hidden" id="oauthLoading">
-  <div class="oauth-loading-inner"><div class="overlay-spinner"></div><p>Connecting to Deriv...</p></div>
-</div>
-
-<div class="ai-btn" onclick="showAIChat()" title="AI Assistant">AI</div>
+<div class="oauth-loading hidden" id="oauthLoading"><div class="oauth-loading-inner"><div class="overlay-spinner"></div><p>Connecting to Deriv...</p></div></div>
 <div class="toast hidden" id="toast"></div>
 <script src="js/app.js"></script>
 </body>
