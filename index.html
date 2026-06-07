@@ -11,8 +11,6 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-
-<!-- ═══════════════════ NAVBAR ═══════════════════ -->
 <header class="navbar" id="navbar">
   <div class="nav-left">
     <button class="hamburger" id="hamburgerBtn" aria-label="Menu">&#9776;</button>
@@ -22,18 +20,10 @@
     </div>
   </div>
   <nav class="nav-tabs" id="navTabs">
-    <button class="nav-tab active" data-page="dashboard" onclick="navigate('dashboard')">
-      <span class="nav-icon">⌂</span> Dashboard
-    </button>
-    <button class="nav-tab" data-page="bot-builder" onclick="navigate('bot-builder')">
-      <span class="nav-icon">⚙</span> Bot Builder
-    </button>
-    <button class="nav-tab" data-page="analysis" onclick="navigate('analysis')">
-      <span class="nav-icon">◎</span> Analysis Tools
-    </button>
-    <button class="nav-tab" data-page="free-bots" onclick="navigate('free-bots')">
-      <span class="nav-icon">🤖</span> Free Bots
-    </button>
+    <button class="nav-tab active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">⌂</span> Dashboard</button>
+    <button class="nav-tab" data-page="bot-builder" onclick="navigate('bot-builder')"><span class="nav-icon">⚙</span> Bot Builder</button>
+    <button class="nav-tab" data-page="analysis" onclick="navigate('analysis')"><span class="nav-icon">◎</span> Analysis Tools</button>
+    <button class="nav-tab" data-page="free-bots" onclick="navigate('free-bots')"><span class="nav-icon">🤖</span> Free Bots</button>
   </nav>
   <div class="nav-right">
     <button class="btn-secondary" onclick="showApiModal()">API Token</button>
@@ -45,23 +35,25 @@
     </div>
   </div>
 </header>
-
-<!-- ═══════════════════ RISK BANNER ═══════════════════ -->
 <div class="risk-banner" id="riskBanner">
   <span>⚠️</span>
   <span>Risk Warning: Trading involves risk. Never trade with money you cannot afford to lose.</span>
   <button onclick="dismissRisk()">✕</button>
 </div>
-
-<!-- ═══════════════════ PAGES ═══════════════════ -->
 <main id="appContainer">
-
-  <!-- ─── DASHBOARD PAGE ─── -->
   <section id="page-dashboard" class="page active">
     <div class="dashboard-hero">
-      <div class="hero-glow"></div>
-      <h1 class="hero-title">Hello Trader!</h1>
-      <p class="hero-quote" id="heroQuote">"🚀 Every tick is an opportunity. Stay ready."</p>
+      <div class="hero-top">
+        <div class="hero-text">
+          <h1 class="hero-title">Hello Trader!</h1>
+          <p class="hero-quote" id="heroQuote">"🚀 Every tick is an opportunity. Stay ready."</p>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><span class="hstat-label">Status</span><span class="hstat-val online">● Online</span></div>
+          <div class="hero-stat"><span class="hstat-label">Balance</span><span class="hstat-val" id="heroBalance">—</span></div>
+          <div class="hero-stat"><span class="hstat-label">Today P/L</span><span class="hstat-val" id="heroPnl">—</span></div>
+        </div>
+      </div>
     </div>
     <div class="dashboard-grid">
       <div class="dash-card" onclick="navigate('bot-builder')">
@@ -103,8 +95,6 @@
       </div>
     </div>
   </section>
-
-  <!-- ─── BOT BUILDER PAGE ─── -->
   <section id="page-bot-builder" class="page">
     <div class="bot-builder-layout">
       <div class="builder-sidebar">
@@ -155,8 +145,6 @@
       </div>
     </div>
   </section>
-
-  <!-- ─── ANALYSIS TOOL PAGE ─── -->
   <section id="page-analysis" class="page">
     <div class="analysis-tabs">
       <button class="atab active" id="atab-dcircle" onclick="switchAnalysisTab('dcircle')">DCIRCLE</button>
@@ -204,14 +192,8 @@
           <div class="cp-last-digit">Last digit: <span id="dcircleLastDigit">—</span></div>
         </div>
         <div class="eo-result" id="eoResult">
-          <div class="eo-bar even-bar" id="evenBar">
-            <span class="eo-label">Even</span>
-            <span class="eo-pct" id="evenPct">—%</span>
-          </div>
-          <div class="eo-bar odd-bar" id="oddBar">
-            <span class="eo-label">Odd</span>
-            <span class="eo-pct" id="oddPct">—%</span>
-          </div>
+          <div class="eo-bar even-bar" id="evenBar"><span class="eo-label">Even</span><span class="eo-pct" id="evenPct">—%</span></div>
+          <div class="eo-bar odd-bar" id="oddBar"><span class="eo-label">Odd</span><span class="eo-pct" id="oddPct">—%</span></div>
         </div>
         <div class="signal-recommendation" id="signalRec">Waiting for data...</div>
       </div>
@@ -238,9 +220,7 @@
         </div>
         <div class="signals-row">
           <div class="signals-dropdown">
-            <button class="signals-btn" onclick="toggleSignalsDropdown()">
-              SIGNALS <span class="signals-badge">5 Strong</span> ▾
-            </button>
+            <button class="signals-btn" onclick="toggleSignalsDropdown()">SIGNALS <span class="signals-badge">5 Strong</span> ▾</button>
             <div class="signals-menu hidden" id="signalsMenu">
               <button onclick="setSignalStrength(3)">3 Strong</button>
               <button onclick="setSignalStrength(5)">5 Strong</button>
@@ -258,13 +238,8 @@
       <div class="bot-status-bar" id="botStatusBar">Bot is not running</div>
     </div>
   </section>
-
-  <!-- ─── FREE BOTS PAGE ─── -->
   <section id="page-free-bots" class="page">
-    <div class="bots-header">
-      <h2>Free & Premium Bots</h2>
-      <p>Browse, load, and edit ready-made strategies</p>
-    </div>
+    <div class="bots-header"><h2>Free & Premium Bots</h2><p>Browse, load, and edit ready-made strategies</p></div>
     <div class="bots-filter">
       <button class="filter-btn active" onclick="filterBots('all',event)">All</button>
       <button class="filter-btn" onclick="filterBots('even_odd',event)">Even/Odd</button>
@@ -274,15 +249,12 @@
     </div>
     <div class="bots-grid" id="botsGrid"></div>
   </section>
-
-  <!-- ─── AUTO TRADER PAGE ─── -->
   <section id="page-auto-trader" class="page">
     <div class="auto-trader-container">
       <h2>Auto Trader</h2>
       <p class="auto-desc">Configure and run automated strategies with smart risk management.</p>
       <div class="auto-form-card">
-        <div class="form-group">
-          <label>Market</label>
+        <div class="form-group"><label>Market</label>
           <select id="autoMarket">
             <option value="R_100">Volatility 100 (1s) Index</option>
             <option value="R_75">Volatility 75 (1s) Index</option>
@@ -291,8 +263,7 @@
             <option value="R_10">Volatility 10 (1s) Index</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Trade Type</label>
+        <div class="form-group"><label>Trade Type</label>
           <select id="autoTradeType">
             <option value="DIGITEVEN">Even/Odd</option>
             <option value="DIGITOVER">Over/Under</option>
@@ -300,26 +271,11 @@
             <option value="DIGITMATCH">Match/Differs</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Stake (USD)</label>
-          <input type="number" id="autoStake" value="0.5" min="0.35" step="0.01" />
-        </div>
-        <div class="form-group">
-          <label>Take Profit (USD)</label>
-          <input type="number" id="autoTakeProfit" value="10" min="1" />
-        </div>
-        <div class="form-group">
-          <label>Stop Loss (USD)</label>
-          <input type="number" id="autoStopLoss" value="5" min="1" />
-        </div>
-        <div class="form-group">
-          <label>Martingale Multiplier</label>
-          <input type="number" id="autoMartingale" value="2" min="1" step="0.1" />
-        </div>
-        <div class="form-group">
-          <label>Max Martingale Steps</label>
-          <input type="number" id="autoMaxSteps" value="3" min="1" max="10" />
-        </div>
+        <div class="form-group"><label>Stake (USD)</label><input type="number" id="autoStake" value="0.5" min="0.35" step="0.01" /></div>
+        <div class="form-group"><label>Take Profit (USD)</label><input type="number" id="autoTakeProfit" value="10" min="1" /></div>
+        <div class="form-group"><label>Stop Loss (USD)</label><input type="number" id="autoStopLoss" value="5" min="1" /></div>
+        <div class="form-group"><label>Martingale Multiplier</label><input type="number" id="autoMartingale" value="2" min="1" step="0.1" /></div>
+        <div class="form-group"><label>Max Martingale Steps</label><input type="number" id="autoMaxSteps" value="3" min="1" max="10" /></div>
         <button class="start-auto-btn" onclick="startAutoTrader()">▶ Start Auto Trader</button>
         <button class="stop-auto-btn hidden" id="stopAutoBtn" onclick="stopAutoTrader()">■ Stop</button>
       </div>
@@ -331,89 +287,49 @@
       </div>
     </div>
   </section>
-
 </main>
-
-<!-- ═══════════════════ MODALS ═══════════════════ -->
-
-<!-- Login Modal -->
 <div class="modal-overlay hidden" id="loginModal">
   <div class="modal">
-    <div class="modal-header">
-      <h3>Log In to NovaTrade</h3>
-      <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
-    </div>
+    <div class="modal-header"><h3>Log In to NovaTrade</h3><button class="modal-close" onclick="closeModal('loginModal')">✕</button></div>
     <div class="modal-body">
-      <!-- OAuth Button -->
-      <button class="oauth-btn" onclick="loginWithOAuth()">
-        <img src="https://deriv.com/static/images/header/deriv-logo.svg" alt="Deriv" onerror="this.style.display='none'" />
-        <span>Continue with Deriv</span>
-      </button>
+      <button class="oauth-btn" onclick="loginWithOAuth()"><span>Continue with Deriv</span></button>
       <div class="divider"><span>or</span></div>
-      <!-- API Token -->
-      <div class="form-group">
-        <label>API Token</label>
-        <input type="password" id="loginTokenInput" placeholder="Paste your Deriv API token..." />
-      </div>
+      <div class="form-group"><label>API Token</label><input type="password" id="loginTokenInput" placeholder="Paste your Deriv API token..." /></div>
       <button class="btn-primary full-width" onclick="loginWithToken()">Log In with Token</button>
-      <p class="modal-link">Don't have a Deriv account? <button class="link-btn" onclick="closeModal('loginModal');showSignupModal()">Sign Up</button></p>
+      <p class="modal-link">No account? <button class="link-btn" onclick="closeModal('loginModal');showSignupModal()">Sign Up</button></p>
     </div>
   </div>
 </div>
-
-<!-- API Token Modal -->
 <div class="modal-overlay hidden" id="apiModal">
   <div class="modal">
-    <div class="modal-header">
-      <h3>Connect API Token</h3>
-      <button class="modal-close" onclick="closeModal('apiModal')">✕</button>
-    </div>
+    <div class="modal-header"><h3>Connect API Token</h3><button class="modal-close" onclick="closeModal('apiModal')">✕</button></div>
     <div class="modal-body">
       <p>Enter your Deriv API token. <a href="https://app.deriv.com/account/api-token" target="_blank" rel="noopener">Get your token here →</a></p>
-      <div class="form-group">
-        <label>API Token</label>
-        <input type="password" id="apiTokenInput" placeholder="Enter your Deriv API token..." />
-      </div>
+      <div class="form-group"><label>API Token</label><input type="password" id="apiTokenInput" placeholder="Enter your Deriv API token..." /></div>
       <div class="scope-note">⚠️ Make sure your token has <strong>Read</strong> and <strong>Trade</strong> scopes enabled.</div>
       <button class="btn-primary full-width" onclick="connectApiToken()">Connect Token</button>
       <div class="connection-status hidden" id="connectionStatus"></div>
     </div>
   </div>
 </div>
-
-<!-- Sign Up Modal -->
 <div class="modal-overlay hidden" id="signupModal">
   <div class="modal">
-    <div class="modal-header">
-      <h3>Get Started with NovaTrade</h3>
-      <button class="modal-close" onclick="closeModal('signupModal')">✕</button>
-    </div>
+    <div class="modal-header"><h3>Get Started with NovaTrade</h3><button class="modal-close" onclick="closeModal('signupModal')">✕</button></div>
     <div class="modal-body">
-      <button class="oauth-btn" onclick="loginWithOAuth()">
-        <span>Sign Up / Log In with Deriv</span>
-      </button>
+      <button class="oauth-btn" onclick="loginWithOAuth()"><span>Sign Up / Log In with Deriv</span></button>
       <div class="divider"><span>or</span></div>
       <a href="https://deriv.com/signup/" target="_blank" rel="noopener" class="btn-primary full-width" style="display:block;text-align:center;text-decoration:none;padding:12px;margin-bottom:12px;">Create Deriv Account →</a>
       <p class="modal-link">Already have an account? <button class="link-btn" onclick="closeModal('signupModal');showLoginModal()">Log in</button></p>
     </div>
   </div>
 </div>
-
-<!-- Account Menu Modal -->
 <div class="modal-overlay hidden" id="accountModal">
   <div class="modal">
-    <div class="modal-header">
-      <h3>My Account</h3>
-      <button class="modal-close" onclick="closeModal('accountModal')">✕</button>
-    </div>
+    <div class="modal-header"><h3>My Account</h3><button class="modal-close" onclick="closeModal('accountModal')">✕</button></div>
     <div class="modal-body">
       <div class="account-info">
         <div class="account-avatar" id="accountAvatar">NT</div>
-        <div>
-          <div class="account-name" id="accountName">—</div>
-          <div class="account-id" id="accountId">—</div>
-          <div class="account-balance" id="accountBalance">Balance: —</div>
-        </div>
+        <div><div class="account-name" id="accountName">—</div><div class="account-id" id="accountId">—</div><div class="account-balance" id="accountBalance">Balance: —</div></div>
       </div>
       <div class="account-actions">
         <button class="account-action-btn" onclick="fetchAndShowBalance()">🔄 Refresh Balance</button>
@@ -423,73 +339,31 @@
     </div>
   </div>
 </div>
-
-<!-- VH Settings Modal -->
 <div class="modal-overlay hidden" id="vhModal">
   <div class="modal">
-    <div class="modal-header">
-      <h3>Virtual Hook Settings</h3>
-      <button class="modal-close" onclick="closeModal('vhModal')">✕</button>
-    </div>
+    <div class="modal-header"><h3>Virtual Hook Settings</h3><button class="modal-close" onclick="closeModal('vhModal')">✕</button></div>
     <div class="modal-body">
-      <div class="form-group">
-        <label>Simulation Balance</label>
-        <input type="number" id="vhBalance" value="1000" min="10" />
-      </div>
-      <div class="form-group">
-        <label>Stop simulation after loss of</label>
-        <input type="number" id="vhStopLoss" value="100" min="1" />
-      </div>
+      <div class="form-group"><label>Simulation Balance</label><input type="number" id="vhBalance" value="1000" min="10" /></div>
+      <div class="form-group"><label>Stop simulation after loss of</label><input type="number" id="vhStopLoss" value="100" min="1" /></div>
       <button class="btn-primary full-width" onclick="saveVHSettings()">Save Settings</button>
     </div>
   </div>
 </div>
-
-<!-- Quick Strategy Modal -->
 <div class="modal-overlay hidden" id="quickStratModal">
   <div class="modal modal-wide">
-    <div class="modal-header">
-      <h3>⚡ Quick Strategy</h3>
-      <button class="modal-close" onclick="closeModal('quickStratModal')">✕</button>
-    </div>
+    <div class="modal-header"><h3>⚡ Quick Strategy</h3><button class="modal-close" onclick="closeModal('quickStratModal')">✕</button></div>
     <div class="modal-body">
       <div class="strat-options">
-        <button class="strat-card" onclick="loadQuickStrategy('martingale')">
-          <div class="strat-icon">📈</div>
-          <div class="strat-name">Martingale</div>
-          <div class="strat-desc">Double stake after each loss</div>
-        </button>
-        <button class="strat-card" onclick="loadQuickStrategy('dalembert')">
-          <div class="strat-icon">⚖️</div>
-          <div class="strat-name">D'Alembert</div>
-          <div class="strat-desc">Increase by 1 unit after loss</div>
-        </button>
-        <button class="strat-card" onclick="loadQuickStrategy('oscarsgrind')">
-          <div class="strat-icon">🎰</div>
-          <div class="strat-name">Oscar's Grind</div>
-          <div class="strat-desc">Conservative profit-targeting</div>
-        </button>
-        <button class="strat-card" onclick="loadQuickStrategy('1324')">
-          <div class="strat-icon">🔢</div>
-          <div class="strat-name">1-3-2-4 System</div>
-          <div class="strat-desc">Low risk staking sequence</div>
-        </button>
+        <button class="strat-card" onclick="loadQuickStrategy('martingale')"><div class="strat-icon">📈</div><div class="strat-name">Martingale</div><div class="strat-desc">Double stake after each loss</div></button>
+        <button class="strat-card" onclick="loadQuickStrategy('dalembert')"><div class="strat-icon">⚖️</div><div class="strat-name">D'Alembert</div><div class="strat-desc">Increase by 1 unit after loss</div></button>
+        <button class="strat-card" onclick="loadQuickStrategy('oscarsgrind')"><div class="strat-icon">🎰</div><div class="strat-name">Oscar's Grind</div><div class="strat-desc">Conservative profit-targeting</div></button>
+        <button class="strat-card" onclick="loadQuickStrategy('1324')"><div class="strat-icon">🔢</div><div class="strat-name">1-3-2-4 System</div><div class="strat-desc">Low risk staking sequence</div></button>
       </div>
     </div>
   </div>
 </div>
-
-<!-- OAuth Redirect Loading Screen -->
-<div class="oauth-loading hidden" id="oauthLoading">
-  <div class="oauth-loading-inner">
-    <div class="overlay-spinner"></div>
-    <p>Connecting to Deriv...</p>
-  </div>
-</div>
-
-<!-- Toast -->
+<div class="oauth-loading hidden" id="oauthLoading"><div class="oauth-loading-inner"><div class="overlay-spinner"></div><p>Connecting to Deriv...</p></div></div>
 <div class="toast hidden" id="toast"></div>
-
 <script src="js/app.js"></script>
 </body>
 </html>
