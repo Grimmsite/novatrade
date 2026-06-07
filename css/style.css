@@ -2262,3 +2262,26 @@ body {
   position: relative !important;
   margin-bottom: 18px;
 }
+
+/* ── CURRENT DIGIT ARROW FIX ── */
+.digits-grid {
+  overflow: visible !important;
+  padding-bottom: 20px;
+}
+
+.digit-ring {
+  overflow: visible !important;
+}
+
+.digit-ring.current-digit::after {
+  content: '▲' !important;
+  display: block !important;
+  position: absolute !important;
+  bottom: -18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  color: #ff6600 !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  z-index: 10 !important;
+}
