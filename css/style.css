@@ -2245,3 +2245,20 @@ body {
   z-index: 10;
   box-shadow: 0 0 6px rgba(255,100,0,0.8);
 }
+
+/* ── CURRENT DIGIT ARROW ── */
+.digit-ring.current-digit::after {
+  content: '▲';
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ff6600;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.digit-ring {
+  position: relative !important;
+  margin-bottom: 18px;
+}

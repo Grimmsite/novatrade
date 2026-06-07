@@ -697,7 +697,7 @@ function updateMarketCard(symbol) {
     if (!ringEl) continue;
     const oldDot = ringEl.querySelector(".current-dot");
     if (oldDot) oldDot.remove();
-    if (d === lastD) {
+    if (d === lastD) { ringEl.classList.add("current-digit"); } else { ringEl.classList.remove("current-digit"); } if (false) {
       const dot = document.createElement("div");
       dot.className = "current-dot";
       ringEl.querySelector(".ring-container").appendChild(dot);
