@@ -2111,3 +2111,29 @@ body {
   border-color: var(--gold-dark) !important;
   color: var(--gold) !important;
 }
+
+/* ── BOT CARD BUTTONS CORRECT CLASS ── */
+.load-bot-btn, .preview-bot-btn {
+  flex: 1;
+  padding: 9px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.load-bot-btn {
+  background: #1a3a6b;
+  border: 1px solid #2a5aab;
+  color: #fff;
+}
+.load-bot-btn:hover { background: #2a4a8b; border-color: #4477cc; }
+
+.preview-bot-btn {
+  background: transparent;
+  border: 1px solid #2a3a4a;
+  color: #8899aa;
+}
+.preview-bot-btn:hover { border-color: var(--gold-dark); color: var(--gold); }
