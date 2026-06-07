@@ -2137,3 +2137,96 @@ body {
   color: #8899aa;
 }
 .preview-bot-btn:hover { border-color: var(--gold-dark); color: var(--gold); }
+
+/* ── BIGGER DIGIT RINGS ── */
+.digit-ring {
+  width: 72px !important;
+  height: 72px !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+}
+
+.ring-container {
+  position: relative;
+  width: 72px !important;
+  height: 72px !important;
+}
+
+.ring-svg {
+  position: absolute;
+  top: 0; left: 0;
+  transform: rotate(-90deg);
+  width: 72px !important;
+  height: 72px !important;
+}
+
+.ring-bg {
+  fill: none;
+  stroke: #2a2a2a;
+  stroke-width: 5;
+}
+
+.ring-fill {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s ease;
+}
+
+.ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.ring-num {
+  font-size: 18px !important;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.ring-pct {
+  font-size: 10px !important;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.digits-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* ── LAST DIGIT BOXES ── */
+.last-digit-box {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
+
+.even-digit {
+  background: #006655 !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.odd-digit {
+  background: #880022 !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.new-digit {
+  outline: 2px solid var(--gold);
+}
