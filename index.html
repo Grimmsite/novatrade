@@ -192,53 +192,99 @@
       <div id="marketsContainer" class="markets-container"></div>
     </div>
     <div id="analysis-tool" class="analysis-tab-content">
-      <div class="analysis-form-card">
-        <h2 class="analysis-brand">NovaTrade Analysistool 🌐</h2>
-        <div class="form-group">
-          <label>Synthetic Market</label>
-          <select id="dcircleMarket" onchange="dcircleMarketChange()">
-            <option value="R_10">Volatility 10</option>
-            <option value="R_25">Volatility 25</option>
-            <option value="R_50">Volatility 50</option>
-            <option value="R_75">Volatility 75</option>
-            <option value="R_100">Volatility 100</option>
-            <option value="1HZ10V">Volatility 10 Index</option>
-            <option value="1HZ25V">Volatility 25 Index</option>
-            <option value="1HZ50V">Volatility 50 Index</option>
-            <option value="1HZ75V">Volatility 75 Index</option>
-            <option value="1HZ100V">Volatility 100 Index</option>
-            <option value="JD10">Jump 10 Index</option>
-            <option value="JD25">Jump 25 Index</option>
-            <option value="JD50">Jump 50 Index</option>
-            <option value="JD75">Jump 75 Index</option>
-            <option value="JD100">Jump 100 Index</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Trade Type</label>
-          <select id="dcircleTradeType" onchange="dcircleTradeTypeChange()">
-            <option value="even_odd">Even/Odd</option>
-            <option value="over_under">Over/Under</option>
-            <option value="match_diff">Match/Differs</option>
-            <option value="rise_fall">Rise/Fall</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Number of Ticks to Analyze</label>
-          <input type="number" id="dcircleTicks" value="120" min="10" max="1000" onchange="updateDcircle()" />
-        </div>
-        <div class="current-price-box">
-          <div class="cp-label">CURRENT PRICE</div>
-          <div class="cp-value" id="dcirclePrice">—</div>
-          <div class="cp-last-digit">Last digit: <span id="dcircleLastDigit">—</span></div>
-        </div>
-        <div class="eo-result" id="eoResult">
-          <div class="eo-bar even-bar" id="evenBar"><span class="eo-label">Even</span><span class="eo-pct" id="evenPct">—%</span></div>
-          <div class="eo-bar odd-bar" id="oddBar"><span class="eo-label">Odd</span><span class="eo-pct" id="oddPct">—%</span></div>
-        </div>
-        <div class="signal-recommendation" id="signalRec">Waiting for data...</div>
+  <div class="atool-wrapper">
+    <h2 class="atool-title">NovaTrade Analysistool 🌐</h2>
+    <div class="atool-top-row">
+      <div class="atool-field">
+        <label>Synthetic Market</label>
+        <select id="atoolMarket" onchange="atoolMarketChange()">
+          <option value="R_10">Volatility 10</option>
+          <option value="R_25">Volatility 25</option>
+          <option value="R_50">Volatility 50</option>
+          <option value="R_75">Volatility 75</option>
+          <option value="R_100">Volatility 100</option>
+          <option value="1HZ10V">Volatility 10 (1s) Index</option>
+          <option value="1HZ25V">Volatility 25 (1s) Index</option>
+          <option value="1HZ50V">Volatility 50 (1s) Index</option>
+          <option value="1HZ75V">Volatility 75 (1s) Index</option>
+          <option value="1HZ100V">Volatility 100 (1s) Index</option>
+          <option value="JD10">Jump 10 Index</option>
+          <option value="JD25">Jump 25 Index</option>
+          <option value="JD50">Jump 50 Index</option>
+          <option value="JD75">Jump 75 Index</option>
+          <option value="JD100">Jump 100 Index</option>
+        </select>
+      </div>
+      <div class="atool-field">
+        <label>Trade Type</label>
+        <select id="atoolTradeType" onchange="atoolUpdate()">
+          <option value="even_odd">Even/Odd</option>
+          <option value="rise_fall">Rise/Fall</option>
+          <option value="over_under">Over/Under</option>
+          <option value="digit_freq">Digit Frequency</option>
+        </select>
       </div>
     </div>
+    <div class="atool-field" style="margin-top:12px">
+      <label>Number of Ticks to Analyze</label>
+      <input type="number" id="atoolTicks" value="120" min="10" max="1000" onchange="atoolUpdate()" />
+    </div>
+    <div class="atool-price-box">
+      <div class="atool-price-label">CURRENT PRICE</div>
+      <div class="atool-price-val" id="atoolPrice">—</div>
+    </div>
+    <div class="atool-counts-row">
+      <div class="atool-count-box"><span class="atool-count-label">Even</span><span class="atool-count-val" id="atoolEvenCount">—</span></div>
+      <div class="atool-count-box"><span class="atool-count-label">Odd</span><span class="atool-count-val" id="atoolOddCount">—</span></div>
+    </div>
+    <div class="atool-section">
+      <div class="atool-section-title">⊞ Even/Odd Pattern</div>
+      <div class="atool-pattern-row" id="atoolPattern"></div>
+    </div>
+    <div class="atool-section">
+      <div class="atool-section-title">📊 Probability Analysis</div>
+      <div class="atool-prob-bar-wrap">
+        <span class="atool-prob-label">Even</span>
+        <div class="atool-prob-bar-bg"><div class="atool-prob-bar even-bar" id="atoolEvenBar" style="width:50%">50%</div></div>
+      </div>
+      <div class="atool-prob-bar-wrap" style="margin-top:8px">
+        <span class="atool-prob-label">Odd</span>
+        <div class="atool-prob-bar-bg"><div class="atool-prob-bar odd-bar" id="atoolOddBar" style="width:50%">50%</div></div>
+      </div>
+    </div>
+    <div class="atool-section">
+      <div class="atool-section-title">📋 Trading Probability Guide</div>
+      <div class="atool-guide-row">
+        <div class="atool-guide-col">
+          <div class="atool-guide-title">Over Probabilities</div>
+          <table class="atool-table">
+            <tr><th>1</th><th>2</th><th>3</th><th>4</th></tr>
+            <tr><td>90%</td><td>85%</td><td>70%</td><td>60%</td></tr>
+            <tr><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+            <tr><td>55%</td><td>40%</td><td>30%</td><td>25%</td></tr>
+          </table>
+        </div>
+        <div class="atool-guide-col">
+          <div class="atool-guide-title">Under Probabilities</div>
+          <table class="atool-table">
+            <tr><th>1</th><th>2</th><th>3</th><th>4</th></tr>
+            <tr><td>25%</td><td>30%</td><td>40%</td><td>55%</td></tr>
+            <tr><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+            <tr><td>60%</td><td>70%</td><td>85%</td><td>90%</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="atool-section">
+      <div class="atool-section-title">📶 Signal Strength Guide</div>
+      <table class="atool-table full-width">
+        <tr><th>Pattern</th><th>Even/Odd</th><th>Rise/Fall</th></tr>
+        <tr><td>Strong Signal</td><td>Above 65%</td><td>Above 65%</td></tr>
+        <tr><td>Moderate Signal</td><td>55-65%</td><td>55-65%</td></tr>
+        <tr><td>Weak Signal</td><td>Below 55%</td><td>Below 55%</td></tr>
+      </table>
+    </div>
+  </div></div>
     <div class="run-bar">
       <div class="bot-status-bar" id="botStatusBar">Bot is not running</div>
     </div>
