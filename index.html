@@ -151,6 +151,42 @@
       <button class="atab" id="atab-tool" onclick="switchAnalysisTab('tool')">AnalysisTool</button>
     </div>
     <div id="analysis-dcircle" class="analysis-tab-content active">
+      <div class="tool-controls">
+        <div class="tick-selector">
+          <span class="tick-label">NO. OF TICKS</span>
+          <div class="tick-buttons">
+            <button class="tick-btn" onclick="setTickCount(30)">30</button>
+            <button class="tick-btn" onclick="setTickCount(60)">60</button>
+            <button class="tick-btn" onclick="setTickCount(100)">100</button>
+            <button class="tick-btn active" onclick="setTickCount(120)">120</button>
+            <button class="tick-btn" onclick="setTickCount(240)">240</button>
+            <button class="tick-btn" onclick="setTickCount(500)">500</button>
+            <button class="tick-btn" onclick="setTickCount(1000)">1000</button>
+          </div>
+        </div>
+        <div class="legend-row">
+          <span class="legend-item most">● Most</span>
+          <span class="legend-item second-most">● 2nd Most</span>
+          <span class="legend-item least">● Least</span>
+          <span class="legend-item second-least">● 2nd Least</span>
+        </div>
+        <div class="signals-row">
+          <div class="signals-dropdown">
+            <button class="signals-btn" onclick="toggleSignalsDropdown()">SIGNALS <span class="signals-badge">5 Strong</span> ▾</button>
+            <div class="signals-menu hidden" id="signalsMenu">
+              <button onclick="setSignalStrength(3)">3 Strong</button>
+              <button onclick="setSignalStrength(5)">5 Strong</button>
+              <button onclick="setSignalStrength(7)">7 Strong</button>
+              <button onclick="setSignalStrength(10)">All Signals</button>
+            </div>
+          </div>
+          <button class="auto-scan-btn" onclick="startAutoScan()">⚡ Auto Scan</button>
+          <button class="scan-all-btn" onclick="scanAll()">⚙ Scan All</button>
+        </div>
+      </div>
+      <div id="marketsContainer" class="markets-container"></div>
+    </div>
+    <div id="analysis-tool" class="analysis-tab-content">
       <div class="analysis-form-card">
         <h2 class="analysis-brand">NovaTrade Analysistool 🌐</h2>
         <div class="form-group">
@@ -197,42 +233,6 @@
         </div>
         <div class="signal-recommendation" id="signalRec">Waiting for data...</div>
       </div>
-    </div>
-    <div id="analysis-tool" class="analysis-tab-content">
-      <div class="tool-controls">
-        <div class="tick-selector">
-          <span class="tick-label">NO. OF TICKS</span>
-          <div class="tick-buttons">
-            <button class="tick-btn" onclick="setTickCount(30)">30</button>
-            <button class="tick-btn" onclick="setTickCount(60)">60</button>
-            <button class="tick-btn" onclick="setTickCount(100)">100</button>
-            <button class="tick-btn active" onclick="setTickCount(120)">120</button>
-            <button class="tick-btn" onclick="setTickCount(240)">240</button>
-            <button class="tick-btn" onclick="setTickCount(500)">500</button>
-            <button class="tick-btn" onclick="setTickCount(1000)">1000</button>
-          </div>
-        </div>
-        <div class="legend-row">
-          <span class="legend-item most">● Most</span>
-          <span class="legend-item second-most">● 2nd Most</span>
-          <span class="legend-item least">● Least</span>
-          <span class="legend-item second-least">● 2nd Least</span>
-        </div>
-        <div class="signals-row">
-          <div class="signals-dropdown">
-            <button class="signals-btn" onclick="toggleSignalsDropdown()">SIGNALS <span class="signals-badge">5 Strong</span> ▾</button>
-            <div class="signals-menu hidden" id="signalsMenu">
-              <button onclick="setSignalStrength(3)">3 Strong</button>
-              <button onclick="setSignalStrength(5)">5 Strong</button>
-              <button onclick="setSignalStrength(7)">7 Strong</button>
-              <button onclick="setSignalStrength(10)">All Signals</button>
-            </div>
-          </div>
-          <button class="auto-scan-btn" onclick="startAutoScan()">⚡ Auto Scan</button>
-          <button class="scan-all-btn" onclick="scanAll()">⚙ Scan All</button>
-        </div>
-      </div>
-      <div id="marketsContainer" class="markets-container"></div>
     </div>
     <div class="run-bar">
       <div class="bot-status-bar" id="botStatusBar">Bot is not running</div>
