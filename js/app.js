@@ -382,6 +382,7 @@ function loadQuickStrategy(type) {
 // ═══════════════════════════════════════════
 
 function initAnalysisPage() {
+  state.dcircleMarket = state.dcircleMarket || document.getElementById('dcircleMarket').value;
   startDcircle();
   if (document.getElementById('atab-tool').classList.contains('active')) {
     startScanAll();
