@@ -43,6 +43,8 @@ let state = {
   userInfo: null,
   ws: null,
   dcircleWs: null,
+  atoolWs: null,
+  atoolTicks: [],
   analysisWs: null,
   autoTraderWs: null,
   botRunning: false,
@@ -1160,60 +1162,46 @@ function dismissRisk() {
   localStorage.setItem('nt_risk_dismissed', '1');
 }
 
+
+
 // ═══════════════════════════════════════════
 // ANALYSIS TOOL - LIVE DATA
 // ═══════════════════════════════════════════
-const atoolState = { ws: null, ticks: [], symbol: 'R_10', connected: false };
-
 function atoolMarketChange() {
-  atoolState.symbol = document.getElementById('atoolMarket').value;
-  atoolState.ticks = [];
-  atoolFetchAndSubscribe();
+  startAtool();
 }
-
-function atoolUpdate() {
-  atoolState.ticks = [];
-  atoolFetchAndSubscribe();
-}
-
+function atoolUpdate() { startAtool(); }
 function startAtool() {
-  atoolState.symbol = document.getElementById('atoolMarket')?.value || 'R_10';
-  if (atoolState.connected) {
-    atoolFetchAndSubscribe();
-    return;
+  if (state.atoolWs) {
+    try { state.atoolWs.close(); } catch(e) {}
   }
-  atoolState.ws = createWS(
+  state.atoolTicks = [];
+  const symbol = document.getElementById('atoolMarket').value;
+  const ticksNeeded = parseInt(document.getElementById('atoolTicks').value) || 120;
+  state.atoolWs = createWS(
     () => {
-      atoolState.connected = true;
-      atoolFetchAndSubscribe();
+      wsSend(state.atoolWs, { ticks_history: symbol, count: ticksNeeded, end: 'latest', style: 'ticks' });
     },
     (msg) => {
       if (msg.history && msg.history.prices) {
-        atoolState.ticks = msg.history.prices.map(p => parseFloat(p));
+        state.atoolTicks = msg.history.prices.map(p => parseFloat(p));
         updateAtoolDisplay();
-        wsSend(atoolState.ws, { ticks: atoolState.symbol, subscribe: 1 });
+        wsSend(state.atoolWs, { ticks: symbol, subscribe: 1 });
       } else if (msg.tick) {
-        atoolState.ticks.push(parseFloat(msg.tick.quote));
-        if (atoolState.ticks.length > 1000) atoolState.ticks.shift();
+        state.atoolTicks.push(parseFloat(msg.tick.quote));
+        if (state.atoolTicks.length > 1000) state.atoolTicks.shift();
         updateAtoolDisplay();
       }
     },
-    () => { atoolState.connected = false; },
-    () => { atoolState.connected = false; }
+    () => {},
+    () => {}
   );
 }
-
-function atoolFetchAndSubscribe() {
-  const ticksNeeded = parseInt(document.getElementById('atoolTicks')?.value) || 120;
-  wsSend(atoolState.ws, { forget_all: 'ticks' });
-  wsSend(atoolState.ws, { ticks_history: atoolState.symbol, count: ticksNeeded, end: 'latest', style: 'ticks' });
-}
-
 function updateAtoolDisplay() {
-  const dec = MARKETS[atoolState.symbol]?.decimals || 2;
-  const digits = atoolState.ticks.map(p => Math.floor(p * Math.pow(10, dec)) % 10);
-  if (!digits.length) return;
-  const lastPrice = atoolState.ticks[atoolState.ticks.length - 1];
+  const symbol = document.getElementById('atoolMarket').value;
+  const dec = MARKETS[symbol]?.decimals || 2;
+  const digits = state.atoolTicks.map(p => Math.floor(p * Math.pow(10, dec)) % 10);
+  const lastPrice = state.atoolTicks[state.atoolTicks.length - 1];
   const priceEl = document.getElementById('atoolPrice');
   if (priceEl) priceEl.textContent = lastPrice.toFixed(dec);
   const evenCount = digits.filter(d => d % 2 === 0).length;
@@ -1226,7 +1214,7 @@ function updateAtoolDisplay() {
   const patternEl = document.getElementById('atoolPattern');
   if (patternEl) {
     patternEl.innerHTML = last20.map(d =>
-      `<div class="atool-pattern-dot ${d % 2 === 0 ? 'even' : 'odd'}">${d % 2 === 0 ? 'E' : 'O'}</div>`
+      '<div class="atool-pattern-dot ' + (d % 2 === 0 ? 'even' : 'odd') + '">' + (d % 2 === 0 ? 'E' : 'O') + '</div>'
     ).join('');
   }
   const evenPct = ((evenCount / digits.length) * 100).toFixed(1);
