@@ -395,7 +395,7 @@ function switchAnalysisTab(tab) {
   document.querySelectorAll('.analysis-tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('atab-' + tab).classList.add('active');
   document.getElementById('analysis-' + tab).classList.add('active');
-  if (tab === 'tool') initMarketCards();
+  if (tab === 'tool') { initMarketCards(); startAtool(); }
   if (tab === 'dcircle') startDcircle();
 }
 
@@ -1158,4 +1158,81 @@ function logout() {
 function dismissRisk() {
   document.getElementById('riskBanner').style.display = 'none';
   localStorage.setItem('nt_risk_dismissed', '1');
+}
+
+// ═══════════════════════════════════════════
+// ANALYSIS TOOL - LIVE DATA
+// ═══════════════════════════════════════════
+const atoolState = { ws: null, ticks: [], symbol: 'R_10', connected: false };
+
+function atoolMarketChange() {
+  atoolState.symbol = document.getElementById('atoolMarket').value;
+  atoolState.ticks = [];
+  atoolFetchAndSubscribe();
+}
+
+function atoolUpdate() {
+  atoolState.ticks = [];
+  atoolFetchAndSubscribe();
+}
+
+function startAtool() {
+  atoolState.symbol = document.getElementById('atoolMarket')?.value || 'R_10';
+  if (atoolState.connected) {
+    atoolFetchAndSubscribe();
+    return;
+  }
+  atoolState.ws = createWS(
+    () => {
+      atoolState.connected = true;
+      atoolFetchAndSubscribe();
+    },
+    (msg) => {
+      if (msg.history && msg.history.prices) {
+        atoolState.ticks = msg.history.prices.map(p => parseFloat(p));
+        updateAtoolDisplay();
+        wsSend(atoolState.ws, { ticks: atoolState.symbol, subscribe: 1 });
+      } else if (msg.tick) {
+        atoolState.ticks.push(parseFloat(msg.tick.quote));
+        if (atoolState.ticks.length > 1000) atoolState.ticks.shift();
+        updateAtoolDisplay();
+      }
+    },
+    () => { atoolState.connected = false; },
+    () => { atoolState.connected = false; }
+  );
+}
+
+function atoolFetchAndSubscribe() {
+  const ticksNeeded = parseInt(document.getElementById('atoolTicks')?.value) || 120;
+  wsSend(atoolState.ws, { forget_all: 'ticks' });
+  wsSend(atoolState.ws, { ticks_history: atoolState.symbol, count: ticksNeeded, end: 'latest', style: 'ticks' });
+}
+
+function updateAtoolDisplay() {
+  const dec = MARKETS[atoolState.symbol]?.decimals || 2;
+  const digits = atoolState.ticks.map(p => Math.floor(p * Math.pow(10, dec)) % 10);
+  if (!digits.length) return;
+  const lastPrice = atoolState.ticks[atoolState.ticks.length - 1];
+  const priceEl = document.getElementById('atoolPrice');
+  if (priceEl) priceEl.textContent = lastPrice.toFixed(dec);
+  const evenCount = digits.filter(d => d % 2 === 0).length;
+  const oddCount = digits.length - evenCount;
+  const evenCountEl = document.getElementById('atoolEvenCount');
+  const oddCountEl = document.getElementById('atoolOddCount');
+  if (evenCountEl) evenCountEl.textContent = evenCount;
+  if (oddCountEl) oddCountEl.textContent = oddCount;
+  const last20 = digits.slice(-20);
+  const patternEl = document.getElementById('atoolPattern');
+  if (patternEl) {
+    patternEl.innerHTML = last20.map(d =>
+      `<div class="atool-pattern-dot ${d % 2 === 0 ? 'even' : 'odd'}">${d % 2 === 0 ? 'E' : 'O'}</div>`
+    ).join('');
+  }
+  const evenPct = ((evenCount / digits.length) * 100).toFixed(1);
+  const oddPct = ((oddCount / digits.length) * 100).toFixed(1);
+  const evenBar = document.getElementById('atoolEvenBar');
+  const oddBar = document.getElementById('atoolOddBar');
+  if (evenBar) { evenBar.style.width = evenPct + '%'; evenBar.textContent = evenPct + '%'; }
+  if (oddBar) { oddBar.style.width = oddPct + '%'; oddBar.textContent = oddPct + '%'; }
 }
