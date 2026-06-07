@@ -2230,3 +2230,18 @@ body {
 .new-digit {
   outline: 2px solid var(--gold);
 }
+
+/* ── CURRENT DIGIT DOT ── */
+.current-dot {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  background: #ff6600;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  z-index: 10;
+  box-shadow: 0 0 6px rgba(255,100,0,0.8);
+}

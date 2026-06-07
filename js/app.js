@@ -672,7 +672,10 @@ function updateMarketCard(symbol) {
     fillEl.setAttribute('stroke-dasharray', dashArr);
 
     pctEl.textContent = (pct * 100).toFixed(1) + '%';
-    ringEl.className = 'digit-ring';
+    ringEl.className = "digit-ring";
+    // Remove dot from all rings
+    const oldDot = ringEl.querySelector(".current-dot");
+    if (oldDot) oldDot.remove();
 
     if (d === mostIdx) {
       fillEl.style.stroke = '#2ecc71';
@@ -687,6 +690,19 @@ function updateMarketCard(symbol) {
     }
   }
 
+  // Add dot to current last digit ring
+  const lastD = digits[digits.length - 1];
+  for (let d = 0; d < 10; d++) {
+    const ringEl = document.getElementById("dring-" + symbol + "-" + d);
+    if (!ringEl) continue;
+    const oldDot = ringEl.querySelector(".current-dot");
+    if (oldDot) oldDot.remove();
+    if (d === lastD) {
+      const dot = document.createElement("div");
+      dot.className = "current-dot";
+      ringEl.querySelector(".ring-container").appendChild(dot);
+    }
+  }
   // Last digits row (last 10)
   const lastDigitsEl = document.getElementById('ldigits-' + symbol);
   if (lastDigitsEl) {
