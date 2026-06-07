@@ -1552,3 +1552,64 @@ body {
     max-height: 85vh;
   }
 }
+
+/* ═══════════════════════════════════════
+   ANALYSIS SUB-NAV
+═══════════════════════════════════════ */
+.analysis-tabs {
+  display: flex;
+  background: var(--black-2);
+  border-bottom: 2px solid var(--card-border);
+  padding: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.analysis-tabs::-webkit-scrollbar { display: none; }
+
+.atab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 16px 12px;
+  cursor: pointer;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+.atab:hover { color: var(--text-secondary); background: var(--black-3); }
+.atab.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+  background: rgba(201,168,76,0.05);
+}
+
+@media (max-width: 640px) {
+  .analysis-tabs {
+    position: fixed;
+    bottom: 56px;
+    left: 0; right: 0;
+    z-index: 1000;
+    border-top: 1px solid var(--card-border);
+    border-bottom: none;
+  }
+  .atab {
+    border-bottom: none;
+    border-top: 3px solid transparent;
+    padding: 12px 8px;
+    font-size: 11px;
+  }
+  .atab.active {
+    border-top-color: var(--gold);
+    border-bottom-color: transparent;
+  }
+  #page-analysis #appContainer,
+  .analysis-tab-content {
+    padding-bottom: 110px;
+  }
+}
