@@ -2326,3 +2326,9 @@ body {
   font-size: 10px !important;
   color: #aaa !important;
 }
+
+/* ── REMOVE INNER CIRCLE ── */
+.ring-container {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
