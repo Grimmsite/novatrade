@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NovaTrade Inspect</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a0a; color: #f0e6cc; font-family: Inter, sans-serif; font-size: 13px; }
+    .section { border: 2px solid #c9a84c; margin: 10px; border-radius: 8px; padding: 10px; }
+    .section h2 { color: #c9a84c; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+    .info { background: #1a1a1a; padding: 8px; border-radius: 4px; margin-bottom: 6px; font-size: 11px; }
+    .info span { color: #2ecc71; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div class="section">
+  <h2>Screen Info</h2>
+  <div class="info">Screen Width: <span id="sw"></span>px</div>
+  <div class="info">Screen Height: <span id="sh"></span>px</div>
+  <div class="info">Window Width: <span id="ww"></span>px</div>
+  <div class="info">Window Height: <span id="wh"></span>px</div>
+  <div class="info">Device Pixel Ratio: <span id="dpr"></span></div>
+  <div class="info">Device Type: <span id="dt"></span></div>
+</div>
+<div class="section">
+  <h2>Navbar</h2>
+  <div class="info">Height: <span id="nh"></span>px</div>
+  <div class="info">Width: <span id="nw"></span>px</div>
+</div>
+<div class="section">
+  <h2>Dashboard Card</h2>
+  <div class="info">Card Width: <span id="cw"></span>px</div>
+  <div class="info">Card Height: <span id="ch"></span>px</div>
+  <div class="info">Grid Cols: <span id="gc"></span></div>
+</div>
+<div class="section">
+  <h2>Issues Detected</h2>
+  <div id="issues"></div>
+</div>
+<script>
+  document.getElementById('sw').textContent = screen.width;
+  document.getElementById('sh').textContent = screen.height;
+  document.getElementById('ww').textContent = window.innerWidth;
+  document.getElementById('wh').textContent = window.innerHeight;
+  document.getElementById('dpr').textContent = window.devicePixelRatio;
+  document.getElementById('dt').textContent = window.innerWidth < 768 ? 'Mobile' : window.innerWidth < 1024 ? 'Tablet' : 'Desktop';
+
+  // Load main site in iframe to measure
+  const iframe = document.createElement('iframe');
+  iframe.src = '/index.html';
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    try {
+      const doc = iframe.contentDocument;
+      const nav = doc.getElementById('navbar');
+      const card = doc.querySelector('.dash-card');
+      const grid = doc.querySelector('.dashboard-grid');
+
+      if(nav) {
+        document.getElementById('nh').textContent = nav.offsetHeight;
+        document.getElementById('nw').textContent = nav.offsetWidth;
+      }
+      if(card) {
+        document.getElementById('cw').textContent = card.offsetWidth;
+        document.getElementById('ch').textContent = card.offsetHeight;
+      }
+      if(grid) {
+        const cols = getComputedStyle(grid).gridTemplateColumns;
+        document.getElementById('gc').textContent = cols;
+      }
+
+      const issues = [];
+      if(nav && nav.offsetHeight > 70) issues.push('Navbar too tall: ' + nav.offsetHeight + 'px');
+      if(card && card.offsetWidth < 100) issues.push('Cards too narrow: ' + card.offsetWidth + 'px');
+      if(window.innerWidth < 768 && grid) {
+        const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+        if(cols > 1) issues.push('Too many columns on mobile: ' + cols);
+      }
+
+      const issuesEl = document.getElementById('issues');
+      if(issues.length === 0) {
+        issuesEl.innerHTML = '<div class="info"><span>No issues detected</span></div>';
+      } else {
+        issuesEl.innerHTML = issues.map(i => '<div class="info" style="color:#e74c3c">' + i + '</div>').join('');
+      }
+    } catch(e) {
+      document.getElementById('issues').innerHTML = '<div class="info">Could not inspect: ' + e.message + '</div>';
+    }
+  };
+</script>
+</body>
+</html>
