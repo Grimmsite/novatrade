@@ -1045,3 +1045,98 @@ document.addEventListener('keydown', e => {
 
 console.log('%c NovaTrade v1.0 ', 'background:#c9a84c;color:#000;font-weight:bold;font-size:14px;padding:4px 8px;border-radius:4px;');
 console.log('%c Powered by Deriv WebSocket API ', 'color:#c9a84c;font-size:11px;');
+
+/* ═══════════════════════════════════════════
+   OAUTH LOGIN — Deriv OAuth2
+   ═══════════════════════════════════════════ */
+
+// ⚠️ Replace with your real App ID once registered on api.deriv.com
+const APP_ID = '1089';
+const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&l=en&brand=deriv`;
+const REDIRECT_URI = window.location.origin + window.location.pathname;
+
+function loginWithOAuth() {
+  closeModal('loginModal');
+  closeModal('signupModal');
+  document.getElementById('oauthLoading').classList.remove('hidden');
+  // Redirect to Deriv OAuth
+  window.location.href = OAUTH_URL + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+}
+
+// Handle OAuth callback — Deriv returns token1, acct1 etc in URL params
+function handleOAuthCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const token1 = params.get('token1');
+  const acct1 = params.get('acct1');
+  const cur1 = params.get('cur1');
+
+  if (token1) {
+    // Clean URL without reloading
+    window.history.replaceState({}, document.title, window.location.pathname + '#dashboard');
+
+    // Save token
+    state.apiToken = token1;
+    localStorage.setItem('nt_token', token1);
+    if (acct1) localStorage.setItem('nt_acct', acct1);
+    if (cur1) {
+      state.currency = cur1;
+      localStorage.setItem('nt_currency', cur1);
+    }
+
+    // Authorize with Deriv
+    authorizeToken(token1);
+    showToast('✅ Logged in via Deriv!');
+    navigate('dashboard');
+  }
+}
+
+// Run OAuth check on page load
+handleOAuthCallback();
+
+/* ═══════════════════════════════════════════
+   ACCOUNT MENU
+   ═══════════════════════════════════════════ */
+
+function showAccountMenu() {
+  if (!state.userInfo) return;
+  const user = state.userInfo;
+  document.getElementById('accountAvatar').textContent = (user.fullname || user.loginid || 'NT').slice(0, 2).toUpperCase();
+  document.getElementById('accountName').textContent = user.fullname || 'Trader';
+  document.getElementById('accountId').textContent = user.loginid || '—';
+  fetchAndShowBalance();
+  openModal('accountModal');
+}
+
+function fetchAndShowBalance() {
+  if (!state.apiToken) return;
+  const ws = createWS(
+    () => wsSend(ws, { authorize: state.apiToken }),
+    (msg) => {
+      if (msg.authorize) {
+        wsSend(ws, { balance: 1 });
+      } else if (msg.balance) {
+        const bal = msg.balance.balance.toFixed(2) + ' ' + msg.balance.currency;
+        document.getElementById('accountBalance').textContent = 'Balance: ' + bal;
+        document.getElementById('autoBalance').textContent = bal;
+        ws.close();
+      }
+    }
+  );
+}
+
+function logout() {
+  state.apiToken = null;
+  state.userInfo = null;
+  localStorage.removeItem('nt_token');
+  localStorage.removeItem('nt_acct');
+  localStorage.removeItem('nt_currency');
+  document.getElementById('userBadge').classList.add('hidden');
+  closeModal('accountModal');
+  showToast('👋 Logged out successfully');
+  navigate('dashboard');
+}
+
+function dismissRisk() {
+  document.getElementById('riskBanner').style.display = 'none';
+  localStorage.setItem('nt_risk_dismissed', '1');
+}
