@@ -2071,3 +2071,43 @@ body {
 @media (max-width: 640px) {
   .bots-grid { grid-template-columns: 1fr !important; padding: 12px !important; }
 }
+
+/* ── BOT CARD BUTTONS FIX ── */
+.bot-load-btn {
+  flex: 1;
+  background: transparent !important;
+  border: 1px solid #2a3a4a !important;
+  color: #8899aa !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  transition: all 0.2s !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.bot-load-btn:hover {
+  background: #1a3a6b !important;
+  border-color: #4477cc !important;
+  color: #fff !important;
+}
+
+.bot-preview-btn {
+  flex: 1;
+  background: transparent !important;
+  border: 1px solid #2a3a4a !important;
+  color: #8899aa !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  transition: all 0.2s !important;
+}
+.bot-preview-btn:hover {
+  border-color: var(--gold-dark) !important;
+  color: var(--gold) !important;
+}
