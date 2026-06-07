@@ -2481,3 +2481,11 @@ body {
 .ring-bg {
   display: none !important;
 }
+
+/* ── RESTORE OUTER RING ── */
+.ring-bg {
+  display: block !important;
+  fill: none !important;
+  stroke: #333 !important;
+  stroke-width: 7 !important;
+}
