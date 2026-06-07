@@ -1486,3 +1486,69 @@ body {
   .nav-tab { padding: 8px 10px; font-size: 12px; }
   .bots-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ═══════════════════════════════════════
+   MOBILE BOTTOM TAB BAR
+═══════════════════════════════════════ */
+@media (max-width: 640px) {
+  .hamburger { display: none !important; }
+
+  .nav-tabs {
+    display: flex !important;
+    position: fixed;
+    top: auto !important;
+    bottom: 0;
+    left: 0; right: 0;
+    flex-direction: row !important;
+    background: var(--black-2);
+    border-top: 1px solid var(--card-border);
+    border-bottom: none;
+    padding: 0;
+    gap: 0;
+    z-index: 1001;
+    height: 56px;
+  }
+
+  .nav-tab {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 4px;
+    font-size: 9px;
+    border-radius: 0;
+    border-top: 2px solid transparent;
+    height: 56px;
+  }
+
+  .nav-tab.active {
+    border-top-color: var(--gold);
+    background: rgba(201,168,76,0.06);
+  }
+
+  .nav-icon { font-size: 18px; }
+
+  #appContainer {
+    margin-top: calc(var(--navbar-h) + 37px);
+    margin-bottom: 56px;
+  }
+
+  .run-bar {
+    bottom: 56px;
+  }
+
+  .toast {
+    bottom: 136px;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    border-radius: 14px 14px 0 0;
+    max-height: 85vh;
+  }
+}
