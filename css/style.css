@@ -2332,3 +2332,147 @@ body {
   background: transparent !important;
   border-radius: 0 !important;
 }
+
+/* ── BINARYTOOL STYLE RINGS ── */
+.markets-container {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 16px !important;
+  padding: 16px !important;
+}
+
+.market-card {
+  background: #0d1117;
+  border: 1px solid #1e2a3a;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.market-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.market-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e0eeff;
+}
+
+.market-card-price {
+  font-size: 13px;
+  color: #44aaff;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.digits-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin-bottom: 12px !important;
+  padding-bottom: 20px !important;
+}
+
+.digit-ring {
+  width: 66px !important;
+  height: 66px !important;
+  position: relative !important;
+  overflow: visible !important;
+  margin-bottom: 0 !important;
+}
+
+.ring-container {
+  width: 66px !important;
+  height: 66px !important;
+  position: relative !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.ring-svg {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: rotate(-90deg) !important;
+  width: 66px !important;
+  height: 66px !important;
+}
+
+.ring-bg {
+  fill: none !important;
+  stroke: #222 !important;
+  stroke-width: 7 !important;
+}
+
+.ring-fill {
+  fill: none !important;
+  stroke-width: 7 !important;
+  stroke-linecap: butt !important;
+  transition: stroke-dasharray 0.3s ease !important;
+}
+
+.ring-label {
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 1px !important;
+}
+
+.ring-num {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  line-height: 1 !important;
+}
+
+.ring-pct {
+  font-size: 10px !important;
+  color: #aaa !important;
+  line-height: 1 !important;
+}
+
+/* ── LAST DIGIT BOXES ── */
+.last-digits-row {
+  display: flex !important;
+  gap: 4px !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 10px !important;
+}
+
+.last-digit-box {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  border: none !important;
+}
+
+.even-digit {
+  background: #007766 !important;
+  color: #fff !important;
+}
+
+.odd-digit {
+  background: #aa1111 !important;
+  color: #fff !important;
+}
+
+.new-digit {
+  outline: 2px solid var(--gold) !important;
+}
+
+@media (max-width: 900px) {
+  .markets-container {
+    grid-template-columns: 1fr !important;
+  }
+}
