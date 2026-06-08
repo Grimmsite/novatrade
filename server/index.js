@@ -44,6 +44,8 @@ app.get('/callback', async (req, res) => {
     });
 
     var tokenData = await tokenRes.json();
+    console.log('TOKEN RESPONSE STATUS:', tokenRes.status);
+    console.log('TOKEN RESPONSE DATA:', JSON.stringify(tokenData));
 
     if (!tokenRes.ok || !tokenData.access_token) {
       var err = encodeURIComponent(JSON.stringify(tokenData));
