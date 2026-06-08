@@ -1125,32 +1125,25 @@ function loginWithOAuth() {
 // Handle OAuth callback — Deriv returns token1, acct1 etc in URL params
 function handleOAuthCallback() {
   var params = new URLSearchParams(window.location.search);
-  var raw = params.get('oauth_accounts');
-  var authError = params.get('auth_error');
+  var token1 = params.get('token1');
+  var acct1  = params.get('acct1');
 
-  if (authError) {
-    showToast('OAuth login failed. Please try again.');
-    window.history.replaceState({}, '', '/');
-    return;
-  }
+  if (!token1) return;
 
-  if (!raw) return;
+  // Store all accounts passed back by Deriv
+  var accounts = [];
+  ['1','2','3'].forEach(function(n) {
+    var t = params.get('token' + n);
+    var a = params.get('acct' + n);
+    if (t && a) accounts.push({ account: a, token: t });
+  });
 
-  try {
-    var accounts = JSON.parse(decodeURIComponent(raw));
-    if (!accounts || !accounts.length) { showToast('No accounts returned from Deriv.'); return; }
+  state.apiToken = token1;
+  localStorage.setItem('nt_token', token1);
+  localStorage.setItem('nt_accounts', JSON.stringify(accounts));
 
-    var primary = accounts[0];
-    state.apiToken = primary.token;
-    localStorage.setItem('nt_token', primary.token);
-    localStorage.setItem('nt_accounts', JSON.stringify(accounts));
-
-    window.history.replaceState({}, '', '/');
-    authorizeToken(primary.token);
-  } catch(e) {
-    showToast('OAuth error: ' + e.message);
-    window.history.replaceState({}, '', '/');
-  }
+  window.history.replaceState({}, '', '/');
+  authorizeToken(token1);
 }
 
 // Run OAuth check on page load
