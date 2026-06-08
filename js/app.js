@@ -1205,12 +1205,18 @@ function dismissRisk() {
 // ANALYSIS TOOL - LIVE DATA
 // ═══════════════════════════════════════════
 function atoolMarketChange() {
+  if (state.atoolWs) {
+    try { state.atoolWs.close(); } catch(e) {}
+    state.atoolWs = null;
+  }
+  state.atoolTicks = [];
   startAtool();
 }
 function atoolUpdate() { if (document.getElementById("atoolTradeType") && state.atoolTicks && state.atoolTicks.length) { updateAtoolDisplay(); } else { startAtool(); } }
 function startAtool() {
   if (state.atoolWs) {
     try { state.atoolWs.close(); } catch(e) {}
+    state.atoolWs = null;
   }
   state.atoolTicks = [];
   const symbol = document.getElementById('atoolMarket').value;
