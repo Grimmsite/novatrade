@@ -620,6 +620,10 @@ function createMarketCard(symbol) {
       <input type="number" id="stake-${symbol}" value="0.5" min="0.35" step="0.01" style="width:65px" />
       <label>Ticks</label>
       <input type="number" id="tdur-${symbol}" value="1" min="1" style="width:50px" />
+      <span id="pred-wrap-${symbol}" style="display:none">
+        <label>Prediction</label>
+        <input type="number" id="tpred-${symbol}" value="5" min="0" max="9" style="width:50px" onchange="updateMarketCard('${symbol}')"/>
+      </span>
       <button class="auto-trade-btn" onclick="showAutoTradeSettings('${symbol}')">Auto ⚙</button>
     </div>
     <div class="eo-trade-row" id="eotrade-${symbol}">
@@ -722,16 +726,24 @@ function updateMarketCard(symbol) {
   const oddLabelEl = document.getElementById('odd-label-' + symbol);
   const evenBtnEl = document.getElementById('even-btn-' + symbol);
   const oddBtnEl = document.getElementById('odd-btn-' + symbol);
+  const predWrap = document.getElementById('pred-wrap-' + symbol);
+  const predVal = parseInt(document.getElementById('tpred-' + symbol)?.value ?? 5);
+  if (tradeType === 'over_under' || tradeType === 'match_diff') {
+    if (predWrap) predWrap.style.display = 'inline';
+  } else {
+    if (predWrap) predWrap.style.display = 'none';
+  }
   if (tradeType === 'over_under') {
-    const over5 = digits.filter(d => d > 4).length;
-    const overPct = ((over5 / total) * 100).toFixed(1);
-    const underPct = (100 - parseFloat(overPct)).toFixed(1);
-    if (evenPctEl) evenPctEl.textContent = 'OVER ' + overPct + '%';
-    if (oddPctEl) oddPctEl.textContent = 'UNDER ' + underPct + '%';
-    if (evenLabelEl) evenLabelEl.textContent = 'Over';
-    if (oddLabelEl) oddLabelEl.textContent = 'Under';
-    if (evenBtnEl) evenBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITOVER'); };
-    if (oddBtnEl) oddBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITUNDER'); };
+    const overCount = digits.filter(d => d > predVal).length;
+    const underCount = digits.filter(d => d < predVal).length;
+    const overPct = ((overCount / total) * 100).toFixed(1);
+    const underPct = ((underCount / total) * 100).toFixed(1);
+    if (evenPctEl) evenPctEl.textContent = overPct + '%';
+    if (oddPctEl) oddPctEl.textContent = underPct + '%';
+    if (evenLabelEl) evenLabelEl.textContent = 'Over ' + predVal;
+    if (oddLabelEl) oddLabelEl.textContent = 'Under ' + predVal;
+    if (evenBtnEl) evenBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITOVER', predVal); };
+    if (oddBtnEl) oddBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITUNDER', predVal); };
   } else if (tradeType === 'match_diff') {
     const topDigit = sorted[0].i; const topPct = (sorted[0].p*100).toFixed(1);
     const lowDigit = sorted[sorted.length-1].i; const lowPct = (sorted[sorted.length-1].p*100).toFixed(1);
