@@ -9,21 +9,21 @@
 const DERIV_WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=1089";
 const ATOOL_WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=36544";
 const MARKETS = {
-  'R_10':     { name: 'Volatility 10 Index',       decimals: 4 },
-  'R_25':     { name: 'Volatility 25 Index',       decimals: 4 },
-  'R_50':     { name: 'Volatility 50 Index',       decimals: 4 },
-  'R_75':     { name: 'Volatility 75 Index',       decimals: 4 },
-  'R_100':    { name: 'Volatility 100 Index',      decimals: 4 },
+  'R_10':     { name: 'Volatility 10 Index',       decimals: 3 },
+  'R_25':     { name: 'Volatility 25 Index',       decimals: 3 },
+  'R_50':     { name: 'Volatility 50 Index',       decimals: 3 },
+  'R_75':     { name: 'Volatility 75 Index',       decimals: 3 },
+  'R_100':    { name: 'Volatility 100 Index',      decimals: 3 },
   '1HZ10V':   { name: 'Volatility 10 (1s) Index',  decimals: 2 },
   '1HZ25V':   { name: 'Volatility 25 (1s) Index',  decimals: 2 },
   '1HZ50V':   { name: 'Volatility 50 (1s) Index',  decimals: 2 },
   '1HZ75V':   { name: 'Volatility 75 (1s) Index',  decimals: 2 },
   '1HZ100V':  { name: 'Volatility 100 (1s) Index', decimals: 2 },
-  'JD10':     { name: 'Jump 10 Index',             decimals: 4 },
-  'JD25':     { name: 'Jump 25 Index',             decimals: 4 },
-  'JD50':     { name: 'Jump 50 Index',             decimals: 4 },
-  'JD75':     { name: 'Jump 75 Index',             decimals: 4 },
-  'JD100':    { name: 'Jump 100 Index',            decimals: 4 },
+  'JD10':     { name: 'Jump 10 Index',             decimals: 3 },
+  'JD25':     { name: 'Jump 25 Index',             decimals: 3 },
+  'JD50':     { name: 'Jump 50 Index',             decimals: 3 },
+  'JD75':     { name: 'Jump 75 Index',             decimals: 3 },
+  'JD100':    { name: 'Jump 100 Index',            decimals: 3 },
 };
 
 const ANALYSIS_MARKETS = ['R_100', 'R_75', 'R_50', 'R_25', 'R_10'];
