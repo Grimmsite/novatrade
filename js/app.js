@@ -716,20 +716,44 @@ function updateMarketCard(symbol) {
   }
 
   const tradeType = document.getElementById('ttype-' + symbol)?.value || 'even_odd';
-  const evenCount = digits.filter(d => d % 2 === 0).length;
-  const oddCount = total - evenCount;
-  const evenPct = ((evenCount / total) * 100).toFixed(1);
-  const oddPct = ((oddCount / total) * 100).toFixed(1);
-
   const evenPctEl = document.getElementById('even-pct-' + symbol);
   const oddPctEl = document.getElementById('odd-pct-' + symbol);
-  if (evenPctEl) evenPctEl.textContent = evenPct + '%';
-  if (oddPctEl) oddPctEl.textContent = oddPct + '%';
-
-  // Fetch payout via proposal
+  const evenLabelEl = document.getElementById('even-label-' + symbol);
+  const oddLabelEl = document.getElementById('odd-label-' + symbol);
+  const evenBtnEl = document.getElementById('even-btn-' + symbol);
+  const oddBtnEl = document.getElementById('odd-btn-' + symbol);
+  if (tradeType === 'over_under') {
+    const over5 = digits.filter(d => d > 4).length;
+    const overPct = ((over5 / total) * 100).toFixed(1);
+    const underPct = (100 - parseFloat(overPct)).toFixed(1);
+    if (evenPctEl) evenPctEl.textContent = 'OVER ' + overPct + '%';
+    if (oddPctEl) oddPctEl.textContent = 'UNDER ' + underPct + '%';
+    if (evenLabelEl) evenLabelEl.textContent = 'Over';
+    if (oddLabelEl) oddLabelEl.textContent = 'Under';
+    if (evenBtnEl) evenBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITOVER'); };
+    if (oddBtnEl) oddBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITUNDER'); };
+  } else if (tradeType === 'match_diff') {
+    const topDigit = sorted[0].i; const topPct = (sorted[0].p*100).toFixed(1);
+    const lowDigit = sorted[sorted.length-1].i; const lowPct = (sorted[sorted.length-1].p*100).toFixed(1);
+    if (evenPctEl) evenPctEl.textContent = 'MATCH ' + topDigit + ' (' + topPct + '%)';
+    if (oddPctEl) oddPctEl.textContent = 'DIFF ' + lowDigit + ' (' + lowPct + '%)';
+    if (evenLabelEl) evenLabelEl.textContent = 'Match';
+    if (oddLabelEl) oddLabelEl.textContent = 'Differs';
+    if (evenBtnEl) evenBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITMATCH'); };
+    if (oddBtnEl) oddBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITDIFF'); };
+  } else {
+    const evenCount = digits.filter(d => d % 2 === 0).length;
+    const evenPct = ((evenCount / total) * 100).toFixed(1);
+    const oddPct = (100 - parseFloat(evenPct)).toFixed(1);
+    if (evenPctEl) evenPctEl.textContent = 'EVEN ' + evenPct + '%';
+    if (oddPctEl) oddPctEl.textContent = 'ODD ' + oddPct + '%';
+    if (evenLabelEl) evenLabelEl.textContent = 'Even';
+    if (oddLabelEl) oddLabelEl.textContent = 'Odd';
+    if (evenBtnEl) evenBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITEVEN'); };
+    if (oddBtnEl) oddBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITODD'); };
+  }
   fetchPayout(symbol);
 }
-
 function fetchPayout(symbol) {
   const stake = parseFloat(document.getElementById('stake-' + symbol)?.value || 0.5);
   const ws = createWS(
