@@ -76,4 +76,12 @@ app.get('/callback', async (req, res) => {
 });
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.listen(PORT, () => console.log('NovaTrade server on port ' + PORT));    var token = encodeURIComponent(tokenData.access_token);
+    res.redirect(FRONTEND_URL + '/?oauth_token=' + token + '&state=' + encodeURIComponent(realState || ''));
+  } catch (e) {
+    res.redirect(FRONTEND_URL + '/?auth_error=' + encodeURIComponent(e.message));
+  }
+});
+
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.listen(PORT, () => console.log('NovaTrade server on port ' + PORT));
