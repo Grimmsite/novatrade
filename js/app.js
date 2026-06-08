@@ -1282,6 +1282,10 @@ function logout() {
   localStorage.removeItem('nt_acct');
   localStorage.removeItem('nt_currency');
   document.getElementById('userBadge').classList.add('hidden');
+  document.querySelectorAll('button, a').forEach(el => {
+    const t = el.textContent.trim();
+    if (t === 'Log In' || t === 'Sign Up') el.classList.remove('hidden');
+  });
   closeModal('accountModal');
   showToast('👋 Logged out successfully');
   navigate('dashboard');
