@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: novatrade
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: DERIV_CLIENT_ID
+        value: 33uSXfChgY8KVaryv2Z5C
+      - key: REDIRECT_URI
+        value: https://novatrade-6j34.onrender.com/callback

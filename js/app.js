@@ -1110,7 +1110,7 @@ console.log('%c Powered by Deriv WebSocket API ', 'color:#c9a84c;font-size:11px;
    ═══════════════════════════════════════════ */
 
 // ⚠️ Replace with your real App ID once registered on api.deriv.com
-const APP_ID = '1089';
+const APP_ID = '33uSXfChgY8KVaryv2Z5C';
 const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&l=en&brand=deriv`;
 const REDIRECT_URI = window.location.origin + window.location.pathname;
 
@@ -1124,28 +1124,32 @@ function loginWithOAuth() {
 
 // Handle OAuth callback — Deriv returns token1, acct1 etc in URL params
 function handleOAuthCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const token1 = params.get('token1');
-  const acct1 = params.get('acct1');
-  const cur1 = params.get('cur1');
+  var params = new URLSearchParams(window.location.search);
+  var raw = params.get('oauth_accounts');
+  var authError = params.get('auth_error');
 
-  if (token1) {
-    // Clean URL without reloading
-    window.history.replaceState({}, document.title, window.location.pathname + '#dashboard');
+  if (authError) {
+    showToast('OAuth login failed. Please try again.');
+    window.history.replaceState({}, '', '/');
+    return;
+  }
 
-    // Save token
-    state.apiToken = token1;
-    localStorage.setItem('nt_token', token1);
-    if (acct1) localStorage.setItem('nt_acct', acct1);
-    if (cur1) {
-      state.currency = cur1;
-      localStorage.setItem('nt_currency', cur1);
-    }
+  if (!raw) return;
 
-    // Authorize with Deriv
-    authorizeToken(token1);
-    showToast('✅ Logged in via Deriv!');
-    navigate('dashboard');
+  try {
+    var accounts = JSON.parse(decodeURIComponent(raw));
+    if (!accounts || !accounts.length) { showToast('No accounts returned from Deriv.'); return; }
+
+    var primary = accounts[0];
+    state.apiToken = primary.token;
+    localStorage.setItem('nt_token', primary.token);
+    localStorage.setItem('nt_accounts', JSON.stringify(accounts));
+
+    window.history.replaceState({}, '', '/');
+    authorizeToken(primary.token);
+  } catch(e) {
+    showToast('OAuth error: ' + e.message);
+    window.history.replaceState({}, '', '/');
   }
 }
 
