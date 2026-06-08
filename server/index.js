@@ -18,7 +18,9 @@ app.get('/callback', async (req, res) => {
   // state parsed below with codeVerifier
   var error = req.query.error;
   var rawState = req.query.state || '';
-  var cvMatch = rawState.match(/^CV\.([^\.]+)\.(.*)$/);
+  var firstDot = rawState.indexOf('.');
+  var lastDot = rawState.lastIndexOf('.');
+  var cvMatch = (rawState.startsWith('CV.') && firstDot !== lastDot) ? [null, rawState.slice(3, lastDot), rawState.slice(lastDot + 1)] : null;
   var codeVerifier = cvMatch ? cvMatch[1] : null;
   var realState = cvMatch ? cvMatch[2] : rawState; // frontend appends this to redirect_uri as ?cv=...
 
