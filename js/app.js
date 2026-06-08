@@ -26,7 +26,7 @@ const MARKETS = {
   'JD100':    { name: 'Jump 100 Index',            decimals: 2 },
 };
 
-const ANALYSIS_MARKETS = ['R_100', 'R_75', 'R_50', 'R_25', 'R_10', '1HZ25V'];
+const ANALYSIS_MARKETS = ['R_100', 'R_75', 'R_50', 'R_25', 'R_10'];
 
 const QUOTES = [
   '"🚀 Every tick is an opportunity. Stay ready."',
