@@ -54,7 +54,21 @@ app.get('/callback', async (req, res) => {
       return res.redirect(FRONTEND_URL + '/?auth_error=' + err);
     }
 
-    var token = encodeURIComponent(tokenData.access_token);
+    // Fetch user's Deriv API tokens using the Bearer token
+    var tokensRes = await fetch('https://api.deriv.com/api/v1/oauth/tokens', {
+      headers: { 'Authorization': 'Bearer ' + tokenData.access_token }
+    });
+    var tokensData = await tokensRes.json();
+    console.log('TOKENS API STATUS:', tokensRes.status);
+    console.log('TOKENS API DATA:', JSON.stringify(tokensData));
+
+    // Use the first API token (read+trade scope)
+    var apiToken = tokensData.tokens && tokensData.tokens[0] && tokensData.tokens[0].token;
+    if (!apiToken) {
+      // Fall back to access token and let frontend handle it
+      apiToken = tokenData.access_token;
+    }
+    var token = encodeURIComponent(apiToken);
     res.redirect(FRONTEND_URL + '/?oauth_token=' + token + '&state=' + encodeURIComponent(realState || ''));
   } catch (e) {
     res.redirect(FRONTEND_URL + '/?auth_error=' + encodeURIComponent(e.message));
