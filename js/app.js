@@ -1207,7 +1207,7 @@ function dismissRisk() {
 function atoolMarketChange() {
   startAtool();
 }
-function atoolUpdate() { startAtool(); }
+function atoolUpdate() { if (document.getElementById("atoolTradeType") && state.atoolTicks && state.atoolTicks.length) { updateAtoolDisplay(); } else { startAtool(); } }
 function startAtool() {
   if (state.atoolWs) {
     try { state.atoolWs.close(); } catch(e) {}
