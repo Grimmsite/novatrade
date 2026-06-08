@@ -15,15 +15,18 @@ app.use(express.json());
 // OAuth callback — Deriv posts back code + state here
 app.get('/callback', async (req, res) => {
   var code = req.query.code;
-  var state = req.query.state;
+  // state parsed below with codeVerifier
   var error = req.query.error;
-  var codeVerifier = req.query.cv; // frontend appends this to redirect_uri as ?cv=...
+  var rawState = req.query.state || '';
+  var cvMatch = rawState.match(/^CV\.([^\.]+)\.(.*)$/);
+  var codeVerifier = cvMatch ? cvMatch[1] : null;
+  var realState = cvMatch ? cvMatch[2] : rawState; // frontend appends this to redirect_uri as ?cv=...
 
   if (error) {
     return res.redirect(FRONTEND_URL + '/?auth_error=' + encodeURIComponent(error));
   }
   if (!code || !codeVerifier) {
-    return res.redirect(FRONTEND_URL + '/?auth_error=missing_params');
+    return res.redirect(FRONTEND_URL + '/?auth_error=missing_cv');
   }
 
   try {

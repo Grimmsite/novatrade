@@ -1143,7 +1143,7 @@ function loginWithOAuth() {
       '&client_id=33uSXfChgY8KVaryv2Z5C' +
       '&redirect_uri=' + encodeURIComponent(redirectUri) +
       '&scope=trade+account_manage' +
-      '&state=' + state +
+      '&state=' + encodeURIComponent('CV.' + codeVerifier + '.' + state) +
       '&code_challenge=' + codeChallenge +
       '&code_challenge_method=S256';
 
