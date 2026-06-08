@@ -623,13 +623,13 @@ function createMarketCard(symbol) {
       <button class="auto-trade-btn" onclick="showAutoTradeSettings('${symbol}')">Auto ⚙</button>
     </div>
     <div class="eo-trade-row" id="eotrade-${symbol}">
-      <button class="eo-trade-btn even-btn" onclick="placeTrade('${symbol}','DIGITEVEN')">
-        <span class="eo-trade-label">Even</span>
+      <button class="eo-trade-btn even-btn" id="even-btn-${symbol}" onclick="placeTrade('${symbol}','DIGITEVEN')">
+        <span class="eo-trade-label" id="even-label-${symbol}">Even</span>
         <span class="eo-trade-pct" id="even-pct-${symbol}">—%</span>
         <span class="eo-trade-payout" id="even-pay-${symbol}">Payout AUD —</span>
       </button>
-      <button class="eo-trade-btn odd-btn" onclick="placeTrade('${symbol}','DIGITODD')">
-        <span class="eo-trade-label">Odd</span>
+      <button class="eo-trade-btn odd-btn" id="odd-btn-${symbol}" onclick="placeTrade('${symbol}','DIGITODD')">
+        <span class="eo-trade-label" id="odd-label-${symbol}">Odd</span>
         <span class="eo-trade-pct" id="odd-pct-${symbol}">—%</span>
         <span class="eo-trade-payout" id="odd-pay-${symbol}">Payout AUD —</span>
       </button>
