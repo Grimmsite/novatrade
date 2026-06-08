@@ -226,7 +226,19 @@ function updateUserBadge(user) {
   const name = user.fullname || user.loginid || 'NT';
   initials.textContent = name.slice(0, 2).toUpperCase();
   badge.classList.remove('hidden');
-  document.getElementById('navTabs').querySelector('[data-page]');
+
+  // Hide login/signup buttons
+  const loginBtn = document.querySelector('button[onclick*="loginModal"], button[onclick*="showLogin"], #loginBtn, .login-btn');
+  const signupBtn = document.querySelector('button[onclick*="signupModal"], button[onclick*="showSignup"], #signupBtn, .signup-btn');
+  if (loginBtn) loginBtn.classList.add('hidden');
+  if (signupBtn) signupBtn.classList.add('hidden');
+
+  // Also hide by text content as fallback
+  document.querySelectorAll('button, a').forEach(el => {
+    const t = el.textContent.trim();
+    if (t === 'Log In' || t === 'Sign Up') el.classList.add('hidden');
+  });
+
   showToast('✅ Connected as ' + (user.fullname || user.loginid));
 }
 
@@ -1278,10 +1290,18 @@ function fetchAndShowBalance() {
 function logout() {
   state.apiToken = null;
   state.userInfo = null;
+  state.bearerToken = null;
+  state.accountId = null;
+  state.apiToken = null;
   localStorage.removeItem('nt_token');
+  localStorage.removeItem('nt_account_id');
   localStorage.removeItem('nt_acct');
   localStorage.removeItem('nt_currency');
   document.getElementById('userBadge').classList.add('hidden');
+  document.querySelectorAll('button, a').forEach(el => {
+    const t = el.textContent.trim();
+    if (t === 'Log In' || t === 'Sign Up') el.classList.remove('hidden');
+  });
   closeModal('accountModal');
   showToast('👋 Logged out successfully');
   navigate('dashboard');
