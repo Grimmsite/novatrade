@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSavedToken();
   handleHashNav();
   window.addEventListener('hashchange', handleHashNav);
-  setTimeout(startAtool, 1000);
+  setTimeout(function(){ startAtool(true); }, 500);
   // Risk banner from localStorage
   if (localStorage.getItem('nt_risk_dismissed')) {
     document.getElementById('riskBanner').style.display = 'none';
@@ -1214,14 +1214,14 @@ function atoolMarketChange() {
   startAtool();
 }
 function atoolUpdate() { if (document.getElementById("atoolTradeType") && state.atoolTicks && state.atoolTicks.length) { updateAtoolDisplay(); } else { startAtool(); } }
-function startAtool() {
+function startAtool(fastLoad) {
   if (state.atoolWs) {
     try { state.atoolWs.close(); } catch(e) {}
     state.atoolWs = null;
   }
   state.atoolTicks = [];
   const symbol = document.getElementById('atoolMarket').value;
-  const ticksNeeded = parseInt(document.getElementById('atoolTicks').value) || 120;
+  const ticksNeeded = fastLoad ? 20 : (parseInt(document.getElementById('atoolTicks').value) || 50);
   state.atoolWs = new WebSocket(ATOOL_WS_URL);
   state.atoolWs.onopen = () => {
     wsSend(state.atoolWs, { ticks_history: symbol, count: ticksNeeded, end: "latest", style: "ticks" });
@@ -1233,6 +1233,7 @@ function startAtool() {
         state.atoolTicks = msg.history.prices.map(p => parseFloat(p));
         updateAtoolDisplay();
         wsSend(state.atoolWs, { ticks: symbol, subscribe: 1 });
+        if (fastLoad) { setTimeout(function(){ startAtool(false); }, 500); }
       } else if (msg.tick) {
         state.atoolTicks.push(parseFloat(msg.tick.quote));
         if (state.atoolTicks.length > 1000) state.atoolTicks.shift();
