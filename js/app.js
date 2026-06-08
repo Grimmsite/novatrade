@@ -398,7 +398,7 @@ function switchAnalysisTab(tab) {
   document.querySelectorAll('.analysis-tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('atab-' + tab).classList.add('active');
   document.getElementById('analysis-' + tab).classList.add('active');
-  if (tab === 'tool') { initMarketCards(); startAtool(); }
+  if (tab === 'tool') { initMarketCards(); if (!state.atoolWs || state.atoolWs.readyState > 1) { startAtool(); } else { updateAtoolDisplay(); } }
   if (tab === 'dcircle') startDcircle();
 }
 
