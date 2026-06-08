@@ -1270,10 +1270,16 @@ function updateAtoolDisplay() {
   const evenBar = document.getElementById('atoolEvenBar');
   const oddBar = document.getElementById('atoolOddBar');
   const patternEl = document.getElementById('atoolPattern');
+  const patternTitle = document.getElementById('atoolPatternTitle');
+  const probLabelA = document.getElementById('atoolProbLabelA');
+  const probLabelB = document.getElementById('atoolProbLabelB');
   if (tradeType === 'over_under') {
     const over5 = digits.filter(d => d > 4).length, under5 = total - over5;
     const op = ((over5/total)*100).toFixed(1), up = ((under5/total)*100).toFixed(1);
     if (labelA) labelA.textContent = 'Over';
+    if (patternTitle) patternTitle.textContent = '⊞ Over/Under Pattern';
+    if (probLabelA) probLabelA.textContent = 'Over';
+    if (probLabelB) probLabelB.textContent = 'Under';
     if (labelB) labelB.textContent = 'Under';
     if (evenCountEl) evenCountEl.textContent = over5;
     if (oddCountEl) oddCountEl.textContent = under5;
@@ -1286,6 +1292,9 @@ function updateAtoolDisplay() {
     const falls = state.atoolTicks.length - 1 - rises;
     const rp = ((rises/(state.atoolTicks.length-1))*100).toFixed(1), fp = (100-parseFloat(rp)).toFixed(1);
     if (labelA) labelA.textContent = 'Rise';
+    if (patternTitle) patternTitle.textContent = '⊞ Rise/Fall Pattern';
+    if (probLabelA) probLabelA.textContent = 'Rise';
+    if (probLabelB) probLabelB.textContent = 'Fall';
     if (labelB) labelB.textContent = 'Fall';
     if (evenCountEl) evenCountEl.textContent = rises;
     if (oddCountEl) oddCountEl.textContent = falls;
@@ -1296,6 +1305,9 @@ function updateAtoolDisplay() {
     const freq = new Array(10).fill(0); digits.forEach(d => freq[d]++);
     const top = freq.indexOf(Math.max.apply(null,freq)), bot = freq.indexOf(Math.min.apply(null,freq));
     if (labelA) labelA.textContent = 'Hot';
+    if (patternTitle) patternTitle.textContent = '⊞ Digit Frequency Pattern';
+    if (probLabelA) probLabelA.textContent = 'Hot Digit';
+    if (probLabelB) probLabelB.textContent = 'Cold Digit';
     if (labelB) labelB.textContent = 'Cold';
     if (evenCountEl) evenCountEl.textContent = top;
     if (oddCountEl) oddCountEl.textContent = bot;
@@ -1306,6 +1318,9 @@ function updateAtoolDisplay() {
     const ec = digits.filter(d => d % 2 === 0).length, oc = total - ec;
     const ep = ((ec/total)*100).toFixed(1), op2 = ((oc/total)*100).toFixed(1);
     if (labelA) labelA.textContent = 'Even';
+    if (patternTitle) patternTitle.textContent = '⊞ Even/Odd Pattern';
+    if (probLabelA) probLabelA.textContent = 'Even';
+    if (probLabelB) probLabelB.textContent = 'Odd';
     if (labelB) labelB.textContent = 'Odd';
     if (evenCountEl) evenCountEl.textContent = ec;
     if (oddCountEl) oddCountEl.textContent = oc;
