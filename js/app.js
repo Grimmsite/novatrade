@@ -1255,28 +1255,62 @@ function startAtool() {
 }
 function updateAtoolDisplay() {
   const symbol = document.getElementById('atoolMarket').value;
+  const tradeType = document.getElementById('atoolTradeType').value;
   const dec = MARKETS[symbol]?.decimals || 2;
   const digits = state.atoolTicks.map(p => Math.floor(p * Math.pow(10, dec)) % 10);
   const lastPrice = state.atoolTicks[state.atoolTicks.length - 1];
   const priceEl = document.getElementById('atoolPrice');
   if (priceEl) priceEl.textContent = lastPrice.toFixed(dec);
-  const evenCount = digits.filter(d => d % 2 === 0).length;
-  const oddCount = digits.length - evenCount;
+  const total = digits.length;
+  const boxes = document.querySelectorAll('.atool-count-box');
+  const labelA = boxes[0] ? boxes[0].querySelector('.atool-count-label') : null;
+  const labelB = boxes[1] ? boxes[1].querySelector('.atool-count-label') : null;
   const evenCountEl = document.getElementById('atoolEvenCount');
   const oddCountEl = document.getElementById('atoolOddCount');
-  if (evenCountEl) evenCountEl.textContent = evenCount;
-  if (oddCountEl) oddCountEl.textContent = oddCount;
-  const last20 = digits.slice(-20);
-  const patternEl = document.getElementById('atoolPattern');
-  if (patternEl) {
-    patternEl.innerHTML = last20.map(d =>
-      '<div class="atool-pattern-dot ' + (d % 2 === 0 ? 'even' : 'odd') + '">' + (d % 2 === 0 ? 'E' : 'O') + '</div>'
-    ).join('');
-  }
-  const evenPct = ((evenCount / digits.length) * 100).toFixed(1);
-  const oddPct = ((oddCount / digits.length) * 100).toFixed(1);
   const evenBar = document.getElementById('atoolEvenBar');
   const oddBar = document.getElementById('atoolOddBar');
-  if (evenBar) { evenBar.style.width = evenPct + '%'; evenBar.textContent = evenPct + '%'; }
-  if (oddBar) { oddBar.style.width = oddPct + '%'; oddBar.textContent = oddPct + '%'; }
+  const patternEl = document.getElementById('atoolPattern');
+  if (tradeType === 'over_under') {
+    const over5 = digits.filter(d => d > 4).length, under5 = total - over5;
+    const op = ((over5/total)*100).toFixed(1), up = ((under5/total)*100).toFixed(1);
+    if (labelA) labelA.textContent = 'Over';
+    if (labelB) labelB.textContent = 'Under';
+    if (evenCountEl) evenCountEl.textContent = over5;
+    if (oddCountEl) oddCountEl.textContent = under5;
+    if (evenBar) { evenBar.style.width = op+'%'; evenBar.textContent = op+'%'; }
+    if (oddBar) { oddBar.style.width = up+'%'; oddBar.textContent = up+'%'; }
+    if (patternEl) patternEl.innerHTML = digits.slice(-20).map(d => '<div class="atool-pattern-dot '+(d>4?'even':'odd')+'">'+(d>4?'O':'U')+'</div>').join('');
+  } else if (tradeType === 'rise_fall') {
+    let rises = 0;
+    for (let i = 1; i < state.atoolTicks.length; i++) if (state.atoolTicks[i] > state.atoolTicks[i-1]) rises++;
+    const falls = state.atoolTicks.length - 1 - rises;
+    const rp = ((rises/(state.atoolTicks.length-1))*100).toFixed(1), fp = (100-parseFloat(rp)).toFixed(1);
+    if (labelA) labelA.textContent = 'Rise';
+    if (labelB) labelB.textContent = 'Fall';
+    if (evenCountEl) evenCountEl.textContent = rises;
+    if (oddCountEl) oddCountEl.textContent = falls;
+    if (evenBar) { evenBar.style.width = rp+'%'; evenBar.textContent = rp+'%'; }
+    if (oddBar) { oddBar.style.width = fp+'%'; oddBar.textContent = fp+'%'; }
+    if (patternEl) patternEl.innerHTML = digits.slice(-20).map(function(_,i){ var r=i>0&&state.atoolTicks[state.atoolTicks.length-20+i]>state.atoolTicks[state.atoolTicks.length-21+i]; return '<div class="atool-pattern-dot '+(r?'even':'odd')+'">'+(r?'R':'F')+'</div>'; }).join('');
+  } else if (tradeType === 'digit_freq') {
+    const freq = new Array(10).fill(0); digits.forEach(d => freq[d]++);
+    const top = freq.indexOf(Math.max.apply(null,freq)), bot = freq.indexOf(Math.min.apply(null,freq));
+    if (labelA) labelA.textContent = 'Hot';
+    if (labelB) labelB.textContent = 'Cold';
+    if (evenCountEl) evenCountEl.textContent = top;
+    if (oddCountEl) oddCountEl.textContent = bot;
+    if (evenBar) { evenBar.style.width = ((freq[top]/total)*100).toFixed(1)+'%'; evenBar.textContent = 'Digit '+top+' ('+((freq[top]/total)*100).toFixed(1)+'%)'; }
+    if (oddBar) { oddBar.style.width = ((freq[bot]/total)*100).toFixed(1)+'%'; oddBar.textContent = 'Digit '+bot+' ('+((freq[bot]/total)*100).toFixed(1)+'%)'; }
+    if (patternEl) patternEl.innerHTML = digits.slice(-20).map(d => '<div class="atool-pattern-dot '+(d===top?'even':d===bot?'odd':'')+'">' + d + '</div>').join('');
+  } else {
+    const ec = digits.filter(d => d % 2 === 0).length, oc = total - ec;
+    const ep = ((ec/total)*100).toFixed(1), op2 = ((oc/total)*100).toFixed(1);
+    if (labelA) labelA.textContent = 'Even';
+    if (labelB) labelB.textContent = 'Odd';
+    if (evenCountEl) evenCountEl.textContent = ec;
+    if (oddCountEl) oddCountEl.textContent = oc;
+    if (evenBar) { evenBar.style.width = ep+'%'; evenBar.textContent = ep+'%'; }
+    if (oddBar) { oddBar.style.width = op2+'%'; oddBar.textContent = op2+'%'; }
+    if (patternEl) patternEl.innerHTML = digits.slice(-20).map(d => '<div class="atool-pattern-dot '+(d%2===0?'even':'odd')+'">'+(d%2===0?'E':'O')+'</div>').join('');
+  }
 }
