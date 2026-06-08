@@ -715,7 +715,7 @@ function updateMarketCard(symbol) {
     `).join('');
   }
 
-  // Even/Odd trade buttons
+  const tradeType = document.getElementById('ttype-' + symbol)?.value || 'even_odd';
   const evenCount = digits.filter(d => d % 2 === 0).length;
   const oddCount = total - evenCount;
   const evenPct = ((evenCount / total) * 100).toFixed(1);
