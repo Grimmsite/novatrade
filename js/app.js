@@ -1137,7 +1137,7 @@ function loginWithOAuth() {
     sessionStorage.setItem('oauth_state', state);
 
     // Embed code_verifier in redirect_uri so backend can retrieve it
-    var redirectUri = 'https://novatrade-6j34.onrender.com/callback';
+    var redirectUri = 'https://novatrade-api.onrender.com/callback';
     var authUrl = 'https://auth.deriv.com/oauth2/auth' +
       '?response_type=code' +
       '&client_id=33uSXfChgY8KVaryv2Z5C' +
