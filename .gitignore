@@ -3,3 +3,9 @@ Thumbs.db
 *.log
 node_modules/
 .env
+*.js
+fix_*.js
+patch.js
+check_*.js
+package.json
+package-lock.json
