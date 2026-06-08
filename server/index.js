@@ -5,36 +5,54 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 const CLIENT_ID = process.env.DERIV_CLIENT_ID || '33uSXfChgY8KVaryv2Z5C';
 const REDIRECT_URI = process.env.REDIRECT_URI || 'https://novatrade-6j34.onrender.com/callback';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://novatrade-6j34.onrender.com';
 
-app.use(cors());
+app.use(cors({ origin: FRONTEND_URL }));
 app.use(express.json());
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, '..')));
+// OAuth callback — Deriv posts back code + state here
+app.get('/callback', async (req, res) => {
+  var code = req.query.code;
+  var state = req.query.state;
+  var error = req.query.error;
+  var codeVerifier = req.query.cv; // frontend appends this to redirect_uri as ?cv=...
 
-// OAuth callback — Deriv redirects here with ?token1=...&acct1=...
-app.get('/callback', (req, res) => {
-  const { token1, acct1, token2, acct2, token3, acct3 } = req.query;
-
-  if (!token1) {
-    return res.redirect('/?auth_error=no_token');
+  if (error) {
+    return res.redirect(FRONTEND_URL + '/?auth_error=' + encodeURIComponent(error));
+  }
+  if (!code || !codeVerifier) {
+    return res.redirect(FRONTEND_URL + '/?auth_error=missing_params');
   }
 
-  // Build accounts array from query params
-  const accounts = [];
-  if (acct1 && token1) accounts.push({ account: acct1, token: token1 });
-  if (acct2 && token2) accounts.push({ account: acct2, token: token2 });
-  if (acct3 && token3) accounts.push({ account: acct3, token: token3 });
+  try {
+    var params = new URLSearchParams();
+    params.append('grant_type', 'authorization_code');
+    params.append('client_id', CLIENT_ID);
+    params.append('code', code);
+    params.append('code_verifier', codeVerifier);
+    params.append('redirect_uri', REDIRECT_URI);
 
-  // Pass tokens back to frontend via URL fragment (never in query string for security)
-  const encoded = encodeURIComponent(JSON.stringify(accounts));
-  res.redirect(`/?oauth_accounts=${encoded}`);
+    var tokenRes = await fetch('https://auth.deriv.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+
+    var tokenData = await tokenRes.json();
+
+    if (!tokenRes.ok || !tokenData.access_token) {
+      var err = encodeURIComponent(JSON.stringify(tokenData));
+      return res.redirect(FRONTEND_URL + '/?auth_error=' + err);
+    }
+
+    var token = encodeURIComponent(tokenData.access_token);
+    res.redirect(FRONTEND_URL + '/?oauth_token=' + token + '&state=' + encodeURIComponent(state || ''));
+  } catch (e) {
+    res.redirect(FRONTEND_URL + '/?auth_error=' + encodeURIComponent(e.message));
+  }
 });
 
-// Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
-
-app.listen(PORT, () => console.log(`NovaTrade server running on port ${PORT}`));
+app.listen(PORT, () => console.log('NovaTrade server on port ' + PORT));

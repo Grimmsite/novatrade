@@ -1116,34 +1116,72 @@ const REDIRECT_URI = window.location.origin + window.location.pathname;
 
 function loginWithOAuth() {
   closeModal('loginModal');
-  closeModal('signupModal');
-  document.getElementById('oauthLoading').classList.remove('hidden');
-  // Redirect to Deriv OAuth
-  window.location.href = OAUTH_URL + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+
+  // Generate PKCE code_verifier
+  var arr = new Uint8Array(64);
+  crypto.getRandomValues(arr);
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  var codeVerifier = Array.from(arr).map(function(v){ return chars[v % chars.length]; }).join('');
+
+  // Generate state
+  var stateArr = new Uint8Array(16);
+  crypto.getRandomValues(stateArr);
+  var state = Array.from(stateArr).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+
+  // Derive code_challenge (SHA-256)
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier)).then(function(hash) {
+    var codeChallenge = btoa(String.fromCharCode.apply(null, new Uint8Array(hash)))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+    sessionStorage.setItem('pkce_cv', codeVerifier);
+    sessionStorage.setItem('oauth_state', state);
+
+    // Embed code_verifier in redirect_uri so backend can retrieve it
+    var redirectUri = 'https://novatrade-6j34.onrender.com/callback';
+    var authUrl = 'https://auth.deriv.com/oauth2/auth' +
+      '?response_type=code' +
+      '&client_id=33uSXfChgY8KVaryv2Z5C' +
+      '&redirect_uri=' + encodeURIComponent(redirectUri) +
+      '&scope=trade+account_manage' +
+      '&state=' + state +
+      '&code_challenge=' + codeChallenge +
+      '&code_challenge_method=S256';
+
+    window.location.href = authUrl;
+  });
 }
 
 // Handle OAuth callback — Deriv returns token1, acct1 etc in URL params
 function handleOAuthCallback() {
   var params = new URLSearchParams(window.location.search);
-  var token1 = params.get('token1');
-  var acct1  = params.get('acct1');
+  var token = params.get('oauth_token');
+  var authError = params.get('auth_error');
+  var returnedState = params.get('state');
 
-  if (!token1) return;
+  if (authError) {
+    showToast('Login failed: ' + decodeURIComponent(authError));
+    window.history.replaceState({}, '', '/');
+    return;
+  }
 
-  // Store all accounts passed back by Deriv
-  var accounts = [];
-  ['1','2','3'].forEach(function(n) {
-    var t = params.get('token' + n);
-    var a = params.get('acct' + n);
-    if (t && a) accounts.push({ account: a, token: t });
-  });
+  if (!token) return;
 
-  state.apiToken = token1;
-  localStorage.setItem('nt_token', token1);
-  localStorage.setItem('nt_accounts', JSON.stringify(accounts));
+  var storedState = sessionStorage.getItem('oauth_state');
+  if (storedState && returnedState && storedState !== returnedState) {
+    showToast('Security error: state mismatch. Please try logging in again.');
+    window.history.replaceState({}, '', '/');
+    return;
+  }
+
+  sessionStorage.removeItem('pkce_cv');
+  sessionStorage.removeItem('oauth_state');
+
+  var accessToken = decodeURIComponent(token);
+  state.apiToken = accessToken;
+  localStorage.setItem('nt_token', accessToken);
 
   window.history.replaceState({}, '', '/');
-  authorizeToken(token1);
+  authorizeToken(accessToken);
 }
 
 // Run OAuth check on page load
