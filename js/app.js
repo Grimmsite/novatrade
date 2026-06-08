@@ -6,7 +6,9 @@
 'use strict';
 
 // ─── GLOBALS ───
-const DERIV_WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=1089";
+const DERIV_WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=1089"; // legacy fallback
+const DERIV_APP_ID = '33uSXfChgY8KVaryv2Z5C';
+const DERIV_API_BASE = 'https://api.derivws.com';
 const ATOOL_WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=36544";
 const MARKETS = {
   'R_10':     { name: 'Volatility 10 Index',       decimals: 3 },
@@ -41,6 +43,8 @@ const QUOTES = [
 let state = {
   currentPage: 'dashboard',
   apiToken: localStorage.getItem('nt_token') || null,
+  bearerToken: localStorage.getItem('nt_token') || null,
+  accountId: localStorage.getItem('nt_account_id') || null,
   userInfo: null,
   ws: null,
   dcircleWs: null,
@@ -125,13 +129,30 @@ function setHeroQuote() {
 // DERIV WEBSOCKET HELPERS
 // ═══════════════════════════════════════════
 
-function createWS(onOpen, onMessage, onClose, onError) {
-  const ws = new WebSocket(DERIV_WS_URL);
+function createWS(onOpen, onMessage, onClose, onError, wsUrl) {
+  const ws = new WebSocket(wsUrl || DERIV_WS_URL);
   ws.onopen = onOpen || (() => {});
   ws.onmessage = e => { try { onMessage(JSON.parse(e.data)); } catch(err) {} };
   ws.onclose = onClose || (() => {});
   ws.onerror = onError || (() => {});
   return ws;
+}
+
+// Get OTP-authenticated WebSocket URL for an account
+async function getAuthWsUrl(bearerToken, accountId) {
+  const res = await fetch(
+    DERIV_API_BASE + '/trading/v1/options/accounts/' + accountId + '/otp',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + bearerToken,
+        'Deriv-App-ID': DERIV_APP_ID
+      }
+    }
+  );
+  const data = await res.json();
+  if (!data.data || !data.data.url) throw new Error('OTP failed: ' + JSON.stringify(data));
+  return data.data.url;
 }
 
 function wsSend(ws, data) {
@@ -142,29 +163,61 @@ function wsSend(ws, data) {
 
 // ─── TOKEN ───
 function checkSavedToken() {
-  if (state.apiToken) {
-    authorizeToken(state.apiToken);
+  if (state.bearerToken) {
+    authorizeToken(state.bearerToken);
   }
 }
 
-function authorizeToken(token) {
-  const ws = createWS(
-    () => wsSend(ws, { authorize: token }),
-    (msg) => {
-      if (msg.authorize) {
-        state.userInfo = msg.authorize;
-        state.currency = msg.authorize.currency || 'AUD';
-        updateUserBadge(msg.authorize);
-        document.getElementById('currencyLabel').textContent = state.currency;
-        ws.close();
-      } else if (msg.error) {
-        showToast('⚠️ Invalid token: ' + msg.error.message);
-        localStorage.removeItem('nt_token');
-        state.apiToken = null;
-        ws.close();
+async function authorizeToken(bearerToken) {
+  try {
+    // Step 1: get accounts list
+    const acctRes = await fetch(DERIV_API_BASE + '/trading/v1/options/accounts', {
+      headers: {
+        'Authorization': 'Bearer ' + bearerToken,
+        'Deriv-App-ID': DERIV_APP_ID
       }
-    }
-  );
+    });
+    const acctData = await acctRes.json();
+    if (!acctData.data || !acctData.data.length) throw new Error('No accounts found');
+
+    // Use first account (prefer real over demo)
+    const accounts = acctData.data;
+    const account = accounts.find(a => !a.is_virtual) || accounts[0];
+    const accountId = account.account_id;
+
+    state.accountId = accountId;
+    state.bearerToken = bearerToken;
+    state.currency = account.currency || 'USD';
+    localStorage.setItem('nt_token', bearerToken);
+    localStorage.setItem('nt_account_id', accountId);
+
+    // Step 2: get OTP WebSocket URL
+    const wsUrl = await getAuthWsUrl(bearerToken, accountId);
+
+    // Step 3: connect and get user info via balance
+    const ws = createWS(
+      () => ws.send(JSON.stringify({ balance: 1 })),
+      (msg) => {
+        if (msg.balance) {
+          state.userInfo = { loginid: accountId, currency: msg.balance.currency, fullname: accountId };
+          state.currency = msg.balance.currency || 'USD';
+          const bal = msg.balance.balance.toFixed(2) + ' ' + msg.balance.currency;
+          updateUserBadge(state.userInfo);
+          document.getElementById('currencyLabel').textContent = state.currency;
+          ws.close();
+        } else if (msg.error) {
+          showToast('⚠️ Connection error: ' + msg.error.message);
+          ws.close();
+        }
+      },
+      null, null, wsUrl
+    );
+  } catch(e) {
+    showToast('⚠️ Login failed: ' + e.message);
+    localStorage.removeItem('nt_token');
+    localStorage.removeItem('nt_account_id');
+    state.apiToken = null;
+  }
 }
 
 function updateUserBadge(user) {
@@ -177,20 +230,23 @@ function updateUserBadge(user) {
   showToast('✅ Connected as ' + (user.fullname || user.loginid));
 }
 
-function fetchBalance() {
-  if (!state.apiToken) return;
-  const ws = createWS(
-    () => wsSend(ws, { authorize: state.apiToken }),
-    (msg) => {
-      if (msg.authorize) {
-        wsSend(ws, { balance: 1 });
-      } else if (msg.balance) {
-        const bal = msg.balance.balance.toFixed(2) + ' ' + msg.balance.currency;
-        document.getElementById('autoBalance').textContent = bal;
-        ws.close();
-      }
-    }
-  );
+async function fetchBalance() {
+  if (!state.bearerToken || !state.accountId) return;
+  try {
+    const wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
+    const ws = createWS(
+      () => ws.send(JSON.stringify({ balance: 1 })),
+      (msg) => {
+        if (msg.balance) {
+          const bal = msg.balance.balance.toFixed(2) + ' ' + msg.balance.currency;
+          const el = document.getElementById('autoBalance');
+          if (el) el.textContent = bal;
+          ws.close();
+        }
+      },
+      null, null, wsUrl
+    );
+  } catch(e) {}
 }
 
 // ═══════════════════════════════════════════
@@ -1178,6 +1234,7 @@ function handleOAuthCallback() {
 
   var accessToken = decodeURIComponent(token);
   state.apiToken = accessToken;
+  state.bearerToken = accessToken;
   localStorage.setItem('nt_token', accessToken);
 
   window.history.replaceState({}, '', '/');
