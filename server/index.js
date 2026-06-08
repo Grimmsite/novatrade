@@ -55,7 +55,7 @@ app.get('/callback', async (req, res) => {
     }
 
     var token = encodeURIComponent(tokenData.access_token);
-    res.redirect(FRONTEND_URL + '/?oauth_token=' + token + '&state=' + encodeURIComponent(state || ''));
+    res.redirect(FRONTEND_URL + '/?oauth_token=' + token + '&state=' + encodeURIComponent(realState || ''));
   } catch (e) {
     res.redirect(FRONTEND_URL + '/?auth_error=' + encodeURIComponent(e.message));
   }
