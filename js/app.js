@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSavedToken();
   handleHashNav();
   window.addEventListener('hashchange', handleHashNav);
+  setTimeout(startAtool, 1000);
   // Risk banner from localStorage
   if (localStorage.getItem('nt_risk_dismissed')) {
     document.getElementById('riskBanner').style.display = 'none';
