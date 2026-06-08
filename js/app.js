@@ -6,7 +6,8 @@
 'use strict';
 
 // ─── GLOBALS ───
-const DERIV_WS_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
+const DERIV_WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=1089";
+const ATOOL_WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=36544";
 const MARKETS = {
   'R_10':     { name: 'Volatility 10 (1s) Index',  decimals: 2 },
   'R_25':     { name: 'Volatility 25 (1s) Index',  decimals: 2 },
@@ -1178,7 +1179,26 @@ function startAtool() {
   state.atoolTicks = [];
   const symbol = document.getElementById('atoolMarket').value;
   const ticksNeeded = parseInt(document.getElementById('atoolTicks').value) || 120;
-  state.atoolWs = createWS(
+  state.atoolWs = new WebSocket(ATOOL_WS_URL);
+  state.atoolWs.onopen = () => {
+    wsSend(state.atoolWs, { ticks_history: symbol, count: ticksNeeded, end: "latest", style: "ticks" });
+  };
+  state.atoolWs.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.history && msg.history.prices) {
+        state.atoolTicks = msg.history.prices.map(p => parseFloat(p));
+        updateAtoolDisplay();
+        wsSend(state.atoolWs, { ticks: symbol, subscribe: 1 });
+      } else if (msg.tick) {
+        state.atoolTicks.push(parseFloat(msg.tick.quote));
+        if (state.atoolTicks.length > 1000) state.atoolTicks.shift();
+        updateAtoolDisplay();
+      }
+    } catch(e) {}
+  };
+  state.atoolWs.onclose = () => {};
+  if (false) createWS(
     () => {
       wsSend(state.atoolWs, { ticks_history: symbol, count: ticksNeeded, end: 'latest', style: 'ticks' });
     },
