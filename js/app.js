@@ -226,8 +226,12 @@ function updateUserBadge(user) {
   const name = user.fullname || user.loginid || 'NT';
   initials.textContent = name.slice(0, 2).toUpperCase();
   badge.classList.remove('hidden');
-  document.getElementById('navTabs').querySelector('[data-page]');
-  showToast('✅ Connected as ' + (user.fullname || user.loginid));
+  document.querySelectorAll('button, a').forEach(function(el) {
+    var t = el.textContent.trim();
+    if (t === 'Log In' || t === 'Sign Up') el.style.display = 'none';
+  });
+  fetchBalance();
+  showToast('Connected as ' + (user.fullname || user.loginid));
 }
 
 async function fetchBalance() {
