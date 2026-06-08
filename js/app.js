@@ -13,7 +13,7 @@ const MARKETS = {
   'R_25':     { name: 'Volatility 25 Index',       decimals: 3 },
   'R_50':     { name: 'Volatility 50 Index',       decimals: 3 },
   'R_75':     { name: 'Volatility 75 Index',       decimals: 3 },
-  'R_100':    { name: 'Volatility 100 Index',      decimals: 3 },
+  'R_100':    { name: 'Volatility 100 Index',      decimals: 2 },
   '1HZ10V':   { name: 'Volatility 10 (1s) Index',  decimals: 2 },
   '1HZ25V':   { name: 'Volatility 25 (1s) Index',  decimals: 2 },
   '1HZ50V':   { name: 'Volatility 50 (1s) Index',  decimals: 2 },
