@@ -1544,6 +1544,31 @@ var brun = {
 };
 
 
+
+function brunOnStrategyChange() {
+  var s = document.getElementById('brun_strategy').value;
+  var mRow = document.getElementById('brun_mult_row');
+  var dRow = document.getElementById('brun_dalembert_row');
+  if (mRow) mRow.style.display = (s === 'martingale' || s === 'reverse_martingale') ? '' : 'none';
+  if (dRow) dRow.style.display = (s === 'dalembert' || s === 'reverse_dalembert' || s === 'oscars_grind') ? '' : 'none';
+}
+
+function brunOnTradeTypeChange() {
+  var tt = document.getElementById('brun_trade_type').value;
+  var ct = document.getElementById('brun_ct');
+  var br = document.getElementById('brun_barrier_row');
+  if (!ct) return;
+  var opts = {
+    evenodd: [['DIGITEVEN','Even'],['DIGITODD','Odd']],
+    overunder: [['DIGITOVER','Over'],['DIGITUNDER','Under']],
+    risefall: [['CALL','Rise (CALL)'],['PUT','Fall (PUT)']],
+    matchdiff: [['DIGITMATCH','Matches'],['DIGITDIFF','Differs']],
+    higherlower: [['CALL','Higher'],['PUT','Lower']]
+  };
+  ct.innerHTML = (opts[tt]||[]).map(function(o){ return '<option value="'+o[0]+'">'+o[1]+'</option>'; }).join('');
+  brunToggleBarrier();
+}
+
 function brunToggleBarrier() {
   var ct = document.getElementById('brun_ct');
   var row = document.getElementById('brun_barrier_row');

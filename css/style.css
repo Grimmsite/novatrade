@@ -2727,3 +2727,6 @@ body {
 .brun-mcard-info{flex:1;min-width:0}
 .brun-mcard-name{font-size:14px;font-weight:600;color:#fff}
 .brun-mcard-desc{font-size:11px;color:#666;margin-top:3px}
+
+.brun-sf-section-label{grid-column:1/-1;font-size:11px;font-weight:700;color:#f0c040;text-transform:uppercase;letter-spacing:1px;padding-top:10px;border-top:1px solid #222;margin-top:4px}
+.brun-settings-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}

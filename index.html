@@ -130,22 +130,85 @@
         <div class="brun-log" id="brun-log">
           <div class="brun-log-empty">Trade log will appear here when bot is running...</div>
         </div>
-        <div class="brun-settings-panel">
+                <div class="brun-settings-panel">
           <div class="brun-settings-title">⚙️ Bot Settings</div>
           <div class="brun-settings-grid">
+
+            <!-- MARKET -->
+            <div class="brun-sf brun-sf-section-label">📊 Market</div>
             <div class="brun-sf">
-              <label>Market Symbol</label>
+              <label>Symbol</label>
               <select id="brun_symbol">
-                <option value="R_10">Volatility 10</option>
-                <option value="R_25">Volatility 25</option>
-                <option value="R_50" selected>Volatility 50</option>
-                <option value="R_75">Volatility 75</option>
-                <option value="R_100">Volatility 100</option>
-                <option value="1HZ10V">Volatility 10 (1s)</option>
-                <option value="1HZ25V">Volatility 25 (1s)</option>
-                <option value="1HZ50V">Volatility 50 (1s)</option>
-                <option value="1HZ75V">Volatility 75 (1s)</option>
-                <option value="1HZ100V">Volatility 100 (1s)</option>
+                <optgroup label="Volatility Indices">
+                  <option value="R_10">Volatility 10</option>
+                  <option value="R_25">Volatility 25</option>
+                  <option value="R_50" selected>Volatility 50</option>
+                  <option value="R_75">Volatility 75</option>
+                  <option value="R_100">Volatility 100</option>
+                </optgroup>
+                <optgroup label="Volatility (1s)">
+                  <option value="1HZ10V">Volatility 10 (1s)</option>
+                  <option value="1HZ25V">Volatility 25 (1s)</option>
+                  <option value="1HZ50V">Volatility 50 (1s)</option>
+                  <option value="1HZ75V">Volatility 75 (1s)</option>
+                  <option value="1HZ100V">Volatility 100 (1s)</option>
+                </optgroup>
+                <optgroup label="Boom Indices">
+                  <option value="BOOM150">Boom 150</option>
+                  <option value="BOOM300">Boom 300</option>
+                  <option value="BOOM500">Boom 500</option>
+                  <option value="BOOM600">Boom 600</option>
+                  <option value="BOOM900">Boom 900</option>
+                  <option value="BOOM1000">Boom 1000</option>
+                </optgroup>
+                <optgroup label="Crash Indices">
+                  <option value="CRASH150">Crash 150</option>
+                  <option value="CRASH300">Crash 300</option>
+                  <option value="CRASH500">Crash 500</option>
+                  <option value="CRASH600">Crash 600</option>
+                  <option value="CRASH900">Crash 900</option>
+                  <option value="CRASH1000">Crash 1000</option>
+                </optgroup>
+                <optgroup label="Step Index">
+                  <option value="stpRNG">Step Index</option>
+                </optgroup>
+                <optgroup label="Jump Indices">
+                  <option value="JD10">Jump 10</option>
+                  <option value="JD25">Jump 25</option>
+                  <option value="JD50">Jump 50</option>
+                  <option value="JD75">Jump 75</option>
+                  <option value="JD100">Jump 100</option>
+                </optgroup>
+                <optgroup label="Range Break">
+                  <option value="RB100">Range Break 100</option>
+                  <option value="RB200">Range Break 200</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="brun-sf">
+              <label>Candle Interval</label>
+              <select id="brun_candle">
+                <option value="60" selected>1 Minute</option>
+                <option value="120">2 Minutes</option>
+                <option value="180">3 Minutes</option>
+                <option value="300">5 Minutes</option>
+                <option value="600">10 Minutes</option>
+                <option value="900">15 Minutes</option>
+                <option value="1800">30 Minutes</option>
+                <option value="3600">1 Hour</option>
+              </select>
+            </div>
+
+            <!-- CONTRACT -->
+            <div class="brun-sf brun-sf-section-label">📋 Contract</div>
+            <div class="brun-sf">
+              <label>Trade Type</label>
+              <select id="brun_trade_type" onchange="brunOnTradeTypeChange()">
+                <option value="evenodd">Even / Odd</option>
+                <option value="overunder">Over / Under</option>
+                <option value="risefall">Rise / Fall</option>
+                <option value="matchdiff">Matches / Differs</option>
+                <option value="higherlower">Higher / Lower</option>
               </select>
             </div>
             <div class="brun-sf">
@@ -157,6 +220,10 @@
                 <option value="DIGITODD">Odd</option>
                 <option value="DIGITOVER">Over</option>
                 <option value="DIGITUNDER">Under</option>
+                <option value="DIGITMATCH">Matches</option>
+                <option value="DIGITDIFF">Differs</option>
+                <option value="CALL">Higher</option>
+                <option value="PUT">Lower</option>
               </select>
             </div>
             <div class="brun-sf">
@@ -172,18 +239,54 @@
                 </select>
               </div>
             </div>
-            <div class="brun-sf" id="brun_barrier_row" style="display:none">
-              <label>Barrier (digit 0–9)</label>
+            <div class="brun-sf" id="brun_barrier_row">
+              <label>Barrier / Prediction Digit (0–9)</label>
               <input type="number" id="brun_barrier" value="4" min="0" max="9" step="1"/>
             </div>
             <div class="brun-sf">
+              <label>Restart on Error</label>
+              <select id="brun_restart_error">
+                <option value="true" selected>Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+
+            <!-- STAKE MANAGEMENT -->
+            <div class="brun-sf brun-sf-section-label">💰 Stake Management</div>
+            <div class="brun-sf">
               <label>Initial Stake ($)</label>
-              <input type="number" id="brun_stake" value="1" min="0.35" step="0.01"/>
+              <input type="number" id="brun_stake" value="0.50" min="0.35" step="0.01"/>
             </div>
             <div class="brun-sf">
+              <label>Stake Strategy</label>
+              <select id="brun_strategy" onchange="brunOnStrategyChange()">
+                <option value="martingale">Martingale</option>
+                <option value="reverse_martingale">Reverse Martingale</option>
+                <option value="dalembert">D'Alembert</option>
+                <option value="reverse_dalembert">Reverse D'Alembert</option>
+                <option value="oscars_grind">Oscar's Grind</option>
+                <option value="fixed">Fixed Stake</option>
+              </select>
+            </div>
+            <div class="brun-sf" id="brun_mult_row">
               <label>Martingale Multiplier</label>
               <input type="number" id="brun_mult" value="2.1" min="1.01" step="0.01"/>
             </div>
+            <div class="brun-sf" id="brun_dalembert_row" style="display:none">
+              <label>D'Alembert Unit ($)</label>
+              <input type="number" id="brun_dalembert_unit" value="0.10" min="0.01" step="0.01"/>
+            </div>
+            <div class="brun-sf">
+              <label>Switch After (runs)</label>
+              <input type="number" id="brun_switch_after" value="3" min="1" step="1"/>
+            </div>
+            <div class="brun-sf">
+              <label>Max Recovery Trades</label>
+              <input type="number" id="brun_max_recovery" value="3" min="1" step="1"/>
+            </div>
+
+            <!-- SESSION CONTROL -->
+            <div class="brun-sf brun-sf-section-label">🎯 Session Control</div>
             <div class="brun-sf">
               <label>Take Profit ($)</label>
               <input type="number" id="brun_tp" value="10" min="0" step="0.5"/>
@@ -193,9 +296,22 @@
               <input type="number" id="brun_sl" value="10" min="0" step="0.5"/>
             </div>
             <div class="brun-sf">
+              <label>Win Target (count)</label>
+              <input type="number" id="brun_win_target" value="4" min="1" step="1"/>
+            </div>
+            <div class="brun-sf">
               <label>Max Trades</label>
               <input type="number" id="brun_max" value="100" min="1" step="1"/>
             </div>
+            <div class="brun-sf">
+              <label>% Confirmation Threshold</label>
+              <input type="number" id="brun_pct_threshold" value="60" min="1" max="100" step="1"/>
+            </div>
+            <div class="brun-sf">
+              <label>Digits for % Check</label>
+              <input type="number" id="brun_digits_check" value="20" min="5" max="100" step="1"/>
+            </div>
+
           </div>
         </div>
       </div>
