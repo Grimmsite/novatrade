@@ -186,6 +186,7 @@ async function authorizeToken(bearerToken) {
     const accountId = account.account_id;
 
     state.accountId = accountId;
+    state.allAccounts = accounts;
     state.bearerToken = bearerToken;
     state.currency = account.currency || 'USD';
     localStorage.setItem('nt_token', bearerToken);
@@ -1260,12 +1261,13 @@ handleOAuthCallback();
 
 function showAccountMenu() {
   if (!state.userInfo) return;
-  const user = state.userInfo;
-  document.getElementById('accountAvatar').textContent = (user.fullname || user.loginid || 'NT').slice(0, 2).toUpperCase();
-  document.getElementById('accountName').textContent = user.fullname || 'Trader';
-  document.getElementById('accountId').textContent = user.loginid || '—';
+  var user = state.userInfo;
+  document.getElementById("accountAvatar").textContent = (user.fullname || user.loginid || "NT").slice(0, 2).toUpperCase();
+  document.getElementById("accountName").textContent = user.fullname || "Trader";
+  document.getElementById("accountId").textContent = user.loginid || "---";
   fetchAndShowBalance();
-  openModal('accountModal');
+  openModal("accountModal");
+  renderAccountSwitcher();
 }
 
 function fetchAndShowBalance() {
@@ -1283,6 +1285,45 @@ function fetchAndShowBalance() {
       }
     }
   );
+}
+
+function renderAccountSwitcher() {
+  var el = document.getElementById("accountSwitcher");
+  if (!el) return;
+  var accounts = state.allAccounts || [];
+  if (accounts.length <= 1) { el.innerHTML = ""; return; }
+  var html = '<p style="font-size:12px;color:#aaa;margin:0 0 6px">Switch Account</p>';
+  for (var x = 0; x < accounts.length; x++) {
+    var a = accounts[x];
+    var active = a.account_id === state.accountId;
+    var type = a.account_type === "real" ? "Real" : "Demo";
+    var label = type + " - " + a.account_id + " (" + a.currency + ")";
+    var style = "display:block;width:100%;text-align:left;padding:8px 12px;"
+      + "margin-bottom:4px;border-radius:6px;cursor:pointer;color:#fff;"
+      + "border:1px solid " + (active ? "#f0c040" : "#444") + ";"
+      + "background:" + (active ? "#2a2200" : "#1a1a1a") + ";";
+    var check = active ? " ✓" : "";
+    html += '<button data-acct="' + a.account_id + '"' + ' style="' + style + '">'+label+check+'</button>';
+  }
+  el.innerHTML = html;
+  var btns = el.querySelectorAll("button");
+  for (var b = 0; b < btns.length; b++) {
+    btns[b].addEventListener("click", function() {
+      switchAccount(this.getAttribute("data-acct"));
+    });
+  }
+}
+
+async function switchAccount(accountId) {
+  if (!state.bearerToken) return;
+  state.accountId = accountId;
+  localStorage.setItem("nt_account_id", accountId);
+  var acct = (state.allAccounts || []).filter(function(a){ return a.account_id === accountId; })[0] || {};
+  state.currency = acct.currency || state.currency;
+  renderAccountSwitcher();
+  await fetchBalance();
+  var type = acct.account_type === "real" ? "Real" : "Demo";
+  showToast("Switched to " + type + " account");
 }
 
 function logout() {
