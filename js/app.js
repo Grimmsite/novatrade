@@ -182,10 +182,11 @@ async function authorizeToken(bearerToken) {
 
     // Use first account (prefer real over demo)
     const accounts = acctData.data;
-    const account = accounts.find(a => !a.is_virtual) || accounts[0];
+    const account = accounts.find(function(a){ return a.account_type === 'real'; }) || accounts[0];
     const accountId = account.account_id;
 
     state.accountId = accountId;
+    state.allAccounts = accounts;
     state.bearerToken = bearerToken;
     state.currency = account.currency || 'USD';
     localStorage.setItem('nt_token', bearerToken);
@@ -1261,11 +1262,12 @@ handleOAuthCallback();
 function showAccountMenu() {
   if (!state.userInfo) return;
   const user = state.userInfo;
-  document.getElementById('accountAvatar').textContent = (user.fullname || user.loginid || 'NT').slice(0, 2).toUpperCase();
-  document.getElementById('accountName').textContent = user.fullname || 'Trader';
-  document.getElementById('accountId').textContent = user.loginid || '—';
+  document.getElementById("accountAvatar").textContent = (user.fullname || user.loginid || "NT").slice(0, 2).toUpperCase();
+  document.getElementById("accountName").textContent = user.fullname || "Trader";
+  document.getElementById("accountId").textContent = user.loginid || "---";
   fetchAndShowBalance();
-  openModal('accountModal');
+  openModal("accountModal");
+  renderAccountSwitcher();
 }
 
 function fetchAndShowBalance() {
@@ -1283,6 +1285,35 @@ function fetchAndShowBalance() {
       }
     }
   );
+}
+
+function renderAccountSwitcher() {
+  var el = document.getElementById('accountSwitcher');
+  if (!el) return;
+  var accounts = state.allAccounts || [];
+  if (accounts.length <= 1) { el.innerHTML = ''; return; }
+  var html = '<div style="font-size:12px;color:#aaa;margin-bottom:6px">Switch Account</div>';
+  accounts.forEach(function(a) {
+    var active = a.account_id === state.accountId;
+    var type = a.account_type === 'real' ? 'Real' : 'Demo';
+    var label = type + ' — ' + a.account_id + ' (' + a.currency + ')';
+    var border = active ? '#f0c040' : '#444';
+    var bg = active ? '#2a2200' : '#1a1a1a';
+    var check = active ? ' ✓' : '';
+    html += '<button onclick="switchAccount('' + a.account_id + '')" style="display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border-radius:6px;border:1px solid ' + border + ';background:' + bg + ';color:#fff;cursor:pointer">' + label + check + '</button>';
+  });
+  el.innerHTML = html;
+}
+
+async function switchAccount(accountId) {
+  if (!state.bearerToken) return;
+  state.accountId = accountId;
+  localStorage.setItem('nt_account_id', accountId);
+  var acct = (state.allAccounts || []).find(function(a){ return a.account_id === accountId; }) || {};
+  state.currency = acct.currency || state.currency;
+  renderAccountSwitcher();
+  await fetchBalance();
+  showToast('Switched to ' + (acct.account_type === 'real' ? 'Real' : 'Demo') + ' account');
 }
 
 function logout() {
