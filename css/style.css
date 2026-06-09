@@ -18,7 +18,7 @@
   --font-body: 'Inter', sans-serif;
   --radius: 8px;
   --navbar-h: 56px;
-  --banner-h: 40px;
+  --banner-h: 0px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

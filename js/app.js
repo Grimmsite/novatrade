@@ -75,16 +75,18 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSavedToken();
   handleHashNav();
   window.addEventListener('hashchange', handleHashNav);
+  setTimeout(function(){ updateBannerHeight(); }, 50);
   setTimeout(function(){ startAtool(true); }, 500);
   // Risk banner from localStorage
   if (localStorage.getItem('nt_risk_dismissed')) {
     document.getElementById('riskBanner').style.display = 'none';
+    updateBannerHeight();
   }
 });
 
 function handleHashNav() {
   const hash = window.location.hash.replace('#', '');
-  const pages = ['dashboard', 'bot-builder', 'analysis', 'free-bots', 'auto-trader'];
+  const pages = ['dashboard', 'bot-builder', 'analysis', 'free-bots', 'auto-trader', 'ai-scalper'];
   if (pages.includes(hash)) navigate(hash);
 }
 
@@ -102,7 +104,15 @@ function navigate(page) {
   state.currentPage = page;
   // Show banner only on dashboard
   var banner = document.getElementById('riskBanner');
-  if (banner) banner.style.display = page === 'dashboard' ? '' : 'none';
+  if (banner) {
+    if (page === 'dashboard') {
+      banner.style.display = '';
+      document.documentElement.style.setProperty('--banner-h', banner.offsetHeight + 'px');
+    } else {
+      banner.style.display = 'none';
+      document.documentElement.style.setProperty('--banner-h', '0px');
+    }
+  }
   window.location.hash = page;
 
   // Close mobile nav
