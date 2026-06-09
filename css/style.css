@@ -2777,98 +2777,8 @@ body {
 .ai-log-msg{color:#bbb;flex:1}
 .ai-log-pnl{flex-shrink:0;font-weight:700}
 .ai-log-pnl.pos{color:#4caf50}
-.ai-log-pnl.neg{color:#f44336}
 
-
-
-body { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-.navbar { flex-shrink: 0; }
-.risk-banner { flex-shrink: 0; }
-#appContainer { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.page { display: none; }
-.page.active { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-/* AI Scalper fills the page */
-.ai-scalper-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #0a0a0a; }
-.ai-scalper-header { flex-shrink: 0; padding: 16px 24px 12px; border-bottom: 1px solid #1e1e1e; background: #0f0f0f; }
-.ai-scalper-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
-.ai-left { width: 280px; min-width: 280px; border-right: 1px solid #1a1a1a; overflow-y: auto; padding: 16px; background: #0d0d0d; }
-.ai-right { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
-.ai-log { flex: 1; min-height: 0; overflow-y: auto; font-size: .78rem; font-family: monospace; background: #0a0a0a; }
-/* Other pages scroll normally */
-#page-dashboard.page.active,
-#page-bot-builder.page.active,
-#page-analysis.page.active { overflow-y: auto; }
-/* Mobile */
-@media (max-width: 768px) {
-  body { overflow: hidden; }
-  .ai-scalper-body { flex-direction: column; overflow-y: auto; }
-  .ai-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid #1a1a1a; overflow-y: visible; }
-  .ai-right { flex: 1; min-height: 300px; }
-  .ai-log { min-height: 250px; }
-}
-
-/* navbar + risk-banner are fixed/sticky, so #appContainer
-   already has margin-top to clear them. We just need it
-   to fill the remaining height without overflow. */
-#appContainer {
-  height: calc(100vh - var(--navbar-h) - 37px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  /* remove any min-height that was fighting this */
-  min-height: unset;
-}
-.page { display: none; }
-.page.active {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-/* pages that need normal scroll stay scrollable */
-#page-dashboard.page.active,
-#page-bot-builder.page.active,
-#page-analysis.page.active {
-  overflow-y: auto;
-}
-/* AI Scalper fills exactly */
-.ai-scalper-wrap {
-  flex: 1; min-height: 0;
-  display: flex; flex-direction: column;
-  overflow: hidden; background: #0a0a0a;
-}
-.ai-scalper-header { flex-shrink: 0; }
-.ai-scalper-body {
-  flex: 1; min-height: 0;
-  display: flex; overflow: hidden;
-}
-.ai-left {
-  width: 280px; min-width: 280px; flex-shrink: 0;
-  overflow-y: auto; padding: 16px;
-  border-right: 1px solid #1a1a1a; background: #0d0d0d;
-}
-.ai-right {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column;
-  padding: 16px; overflow: hidden;
-}
-.ai-log { flex: 1; min-height: 0; overflow-y: auto; }
-/* Mobile: stack panels, allow scroll */
-@media (max-width: 768px) {
-  #appContainer {
-    height: calc(100vh - var(--navbar-h) - 37px);
-    overflow-y: auto;
-  }
-  .page.active { overflow: visible; flex: unset; }
-  .ai-scalper-wrap { min-height: calc(100vh - var(--navbar-h) - 37px); }
-  .ai-scalper-body { flex-direction: column; overflow: visible; min-height: unset; }
-  .ai-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid #1a1a1a; overflow-y: visible; }
-  .ai-right { min-height: 350px; }
-  .ai-log { min-height: 250px; }
-}
-
-/* ── AI SCALPER LAYOUT ───────────────────────────── */
+/* ══ FINAL LAYOUT ══════════════════════════════════════════ */
 #page-ai-scalper.page.active { overflow: hidden; }
 .ai-scalper-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #0a0a0a; }
 .ai-scalper-header { flex-shrink: 0; }
@@ -2878,11 +2788,11 @@ body { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 .ai-log { flex: 1; min-height: 0; overflow-y: auto; }
 
 @media (max-width: 768px) {
-  #appContainer { height: auto; min-height: calc(100vh - var(--navbar-h) - 37px); overflow: visible; display: block; }
-  .page.active { display: block; overflow: visible; min-height: unset; flex: unset; }
-  #page-ai-scalper.page.active { display: block; overflow: visible; }
-  .ai-scalper-wrap { overflow: visible; min-height: unset; display: block; }
-  .ai-scalper-body { display: block; overflow: visible; height: auto; }
+  #appContainer { height: auto !important; min-height: calc(100vh - var(--navbar-h) - 37px); overflow-y: auto !important; display: block !important; }
+  .page.active { display: block !important; overflow: visible !important; min-height: unset !important; flex: unset !important; }
+  #page-ai-scalper.page.active { overflow: visible !important; }
+  .ai-scalper-wrap { overflow: visible !important; display: block !important; min-height: unset; }
+  .ai-scalper-body { display: block !important; overflow: visible !important; height: auto; }
   .ai-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid #1a1a1a; overflow-y: visible; height: auto; }
   .ai-right { min-height: 400px; overflow: visible; }
   .ai-log { min-height: 300px; overflow-y: auto; }
