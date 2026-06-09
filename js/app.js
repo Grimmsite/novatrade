@@ -227,11 +227,12 @@ function updateUserBadge(user) {
   var name = user.fullname || user.loginid || "NT";
   initials.textContent = name.slice(0, 2).toUpperCase();
   badge.classList.remove("hidden");
-  var tg = document.getElementById("acctToggle"); if (tg) tg.style.display = "flex"; updateToggle();
   var loginBtn = document.querySelector(".btn-login");
   var signupBtn = document.querySelector(".btn-signup");
   if (loginBtn) loginBtn.style.display = "none";
   if (signupBtn) signupBtn.style.display = "none";
+  var tg = document.getElementById("acctToggle"); if (tg) tg.style.display = "flex"; updateToggle();
+  updateDbotFrame();
   fetchBalance();
   showToast("Connected as " + (user.fullname || user.loginid));
 }
@@ -1507,4 +1508,18 @@ function updateAtoolDisplay() {
     if (oddBar) { oddBar.style.width = op2+'%'; oddBar.textContent = op2+'%'; }
     if (patternEl) patternEl.innerHTML = digits.slice(-20).map(d => '<div class="atool-pattern-dot '+(d%2===0?'even':'odd')+'">'+(d%2===0?'E':'O')+'</div>').join('');
   }
+}
+
+function updateDbotFrame() {
+  var frame = document.getElementById('dbotFrame');
+  if (!frame) return;
+  var acct = (state.allAccounts || []).find(function(a){ return a.account_id === state.accountId; }) || {};
+  var token = state.bearerToken;
+  var accountId = state.accountId;
+  var currency = acct.currency || state.currency || 'USD';
+  if (!token || !accountId) return;
+  var url = 'https://bot.deriv.com/?acct1=' + encodeURIComponent(accountId)
+    + '&token1=' + encodeURIComponent(token)
+    + '&cur1=' + encodeURIComponent(currency);
+  frame.src = url;
 }
