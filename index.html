@@ -103,8 +103,7 @@
   <section id="page-bot-builder" class="page">
     <div class="brun-wrap">
       <div class="brun-left">
-        <div class="brun-panel-hdr">🤖 Bot Library</div>
-        <div id="brun-library"></div>
+        <button class="brun-pick-btn" onclick="brunOpenModal()">🤖 Select Bot</button>
         <div class="brun-divider"></div>
         <div class="brun-panel-hdr">📂 Custom Bot</div>
         <label class="brun-upload-btn"><input type="file" id="brun_xml" accept=".xml" style="display:none" onchange="brunLoadXML(event)"/>Upload XML Bot</label>
@@ -339,6 +338,13 @@
   </div></div>
     <div class="run-bar">
       <div class="bot-status-bar" id="botStatusBar">Bot is not running</div>
+    </div>
+  
+    <div id="brun-modal" class="brun-modal-overlay" style="display:none">
+      <div class="brun-modal">
+        <div class="brun-modal-hdr"><span>🤖 Select a Bot</span><button class="brun-modal-close" onclick="brunCloseModal()">✕</button></div>
+        <div id="brun-modal-list" class="brun-modal-list"></div>
+      </div>
     </div>
   </section>
   <section id="page-free-bots" class="page">
