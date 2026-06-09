@@ -229,11 +229,14 @@ body {
 ═══════════════════════════════════════ */
 #appContainer {
   margin-top: calc(var(--navbar-h) + 37px);
-  min-height: calc(100vh - var(--navbar-h) - 37px);
+  height: calc(100vh - var(--navbar-h) - 37px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .page { display: none; }
-.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 
 /* ═══════════════════════════════════════
    DASHBOARD
@@ -2866,89 +2869,23 @@ body { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
   .ai-log { min-height: 250px; }
 }
 
-/* ── LAYOUT FIX FINAL ───────────────────────────────── */
-
-/* Desktop: appContainer fills remaining viewport height */
-#appContainer {
-  height: calc(100vh - var(--navbar-h) - 37px);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* All pages hidden by default */
-.page { display: none; }
-
-/* Active pages: fill container, scroll internally */
-.page.active {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* AI Scalper: no page-level scroll — internal panels scroll */
+/* ── AI SCALPER LAYOUT ───────────────────────────── */
 #page-ai-scalper.page.active { overflow: hidden; }
-
-.ai-scalper-wrap {
-  flex: 1; min-height: 0;
-  display: flex; flex-direction: column;
-  overflow: hidden; background: #0a0a0a;
-}
+.ai-scalper-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #0a0a0a; }
 .ai-scalper-header { flex-shrink: 0; }
-.ai-scalper-body {
-  flex: 1; min-height: 0;
-  display: flex; overflow: hidden;
-}
-.ai-left {
-  width: 280px; min-width: 280px; flex-shrink: 0;
-  overflow-y: auto; padding: 16px;
-  border-right: 1px solid #1a1a1a; background: #0d0d0d;
-}
-.ai-right {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column;
-  padding: 16px; overflow: hidden;
-}
+.ai-scalper-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+.ai-left { width: 280px; min-width: 280px; flex-shrink: 0; overflow-y: auto; padding: 16px; border-right: 1px solid #1a1a1a; background: #0d0d0d; }
+.ai-right { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
 .ai-log { flex: 1; min-height: 0; overflow-y: auto; }
 
-/* ── MOBILE ─────────────────────────────────────────── */
+/* ── MOBILE ──────────────────────────────────────── */
 @media (max-width: 768px) {
-  /* appContainer scrolls on mobile */
-  #appContainer {
-    height: calc(100vh - var(--navbar-h) - 37px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    display: block;
-  }
-
-  /* All pages natural height on mobile */
-  .page.active {
-    display: block;
-    overflow: visible;
-    min-height: unset;
-    flex: unset;
-  }
-
-  /* AI Scalper mobile: stack vertically, full scroll */
-  #page-ai-scalper.page.active {
-    display: block;
-    overflow: visible;
-  }
+  #appContainer { height: calc(100vh - var(--navbar-h) - 37px); overflow-y: auto; display: block; }
+  .page.active { display: block; overflow: visible; min-height: unset; flex: unset; }
+  #page-ai-scalper.page.active { display: block; overflow: visible; }
   .ai-scalper-wrap { overflow: visible; min-height: unset; }
-  .ai-scalper-body {
-    flex-direction: column;
-    overflow: visible;
-    min-height: unset;
-    height: auto;
-  }
-  .ai-left {
-    width: 100%; min-width: unset;
-    border-right: none; border-bottom: 1px solid #1a1a1a;
-    overflow-y: visible; height: auto;
-  }
+  .ai-scalper-body { flex-direction: column; overflow: visible; height: auto; }
+  .ai-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid #1a1a1a; overflow-y: visible; height: auto; }
   .ai-right { min-height: 400px; overflow: visible; }
   .ai-log { min-height: 300px; overflow-y: auto; }
 }
