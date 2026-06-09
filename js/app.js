@@ -100,6 +100,9 @@ function navigate(page) {
   if (tab) tab.classList.add('active');
 
   state.currentPage = page;
+  // Show banner only on dashboard
+  var banner = document.getElementById('riskBanner');
+  if (banner) banner.style.display = page === 'dashboard' ? '' : 'none';
   window.location.hash = page;
 
   // Close mobile nav
