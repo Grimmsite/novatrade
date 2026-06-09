@@ -34,7 +34,7 @@
     <button class="btn-secondary" onclick="showApiModal()" id="apiTokenBtn">API Token</button>
     <button class="btn-login" onclick="showLoginModal()">Log In</button>
     <button class="btn-signup" onclick="showSignupModal()">Sign Up</button>
-    <div class="user-badge hidden" id="userBadge" onclick="showAccountMenu()">
+    <div id="acctToggle" style="display:none;align-items:center;margin-right:10px;background:#111;border:1px solid #444;border-radius:20px;padding:3px;cursor:pointer" onclick="toggleAccount()"><span id="toggleDemo" style="padding:3px 10px;border-radius:16px;font-size:12px;transition:all 0.2s">Demo</span><span id="toggleReal" style="padding:3px 10px;border-radius:16px;font-size:12px;transition:all 0.2s">Real</span></div><div class="user-badge hidden" id="userBadge" onclick="showAccountMenu()">
       <span id="userInitials">NT</span>
       <span class="user-status-dot"></span>
     </div>

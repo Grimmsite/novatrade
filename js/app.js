@@ -227,6 +227,7 @@ function updateUserBadge(user) {
   var name = user.fullname || user.loginid || "NT";
   initials.textContent = name.slice(0, 2).toUpperCase();
   badge.classList.remove("hidden");
+  var tg = document.getElementById("acctToggle"); if (tg) tg.style.display = "flex"; updateToggle();
   var loginBtn = document.querySelector(".btn-login");
   var signupBtn = document.querySelector(".btn-signup");
   if (loginBtn) loginBtn.style.display = "none";
@@ -1287,6 +1288,28 @@ function fetchAndShowBalance() {
   );
 }
 
+function updateToggle() {
+  var el = document.getElementById("acctToggle");
+  var demoBtn = document.getElementById("toggleDemo");
+  var realBtn = document.getElementById("toggleReal");
+  if (!el) return;
+  var acct = (state.allAccounts || []).find(function(a){ return a.account_id === state.accountId; }) || {};
+  var isReal = acct.account_type === "real";
+  demoBtn.style.background = isReal ? "" : "#f0c040";
+  demoBtn.style.color = isReal ? "#aaa" : "#000";
+  realBtn.style.background = isReal ? "#f0c040" : "";
+  realBtn.style.color = isReal ? "#000" : "#aaa";
+}
+
+async function toggleAccount() {
+  var accounts = state.allAccounts || [];
+  if (accounts.length <= 1) return;
+  var other = accounts.find(function(a){ return a.account_id !== state.accountId; });
+  if (!other) return;
+  await switchAccount(other.account_id);
+  updateToggle();
+}
+
 function renderAccountSwitcher() {
   var el = document.getElementById("accountSwitcher");
   if (!el) return;
@@ -1323,6 +1346,7 @@ async function switchAccount(accountId) {
   renderAccountSwitcher();
   await fetchBalance();
   var type = acct.account_type === "real" ? "Real" : "Demo";
+  updateToggle();
   showToast("Switched to " + type + " account");
 }
 
