@@ -101,56 +101,48 @@
     </div>
   </section>
   <section id="page-bot-builder" class="page">
-    <div class="bot-builder-layout">
-      <div class="builder-sidebar">
-        <button class="sidebar-btn" title="Refresh" onclick="refreshBuilder()">↺</button>
-        <button class="sidebar-btn" title="Load XML" onclick="loadXMLFile()">📁</button>
-        <button class="sidebar-btn" title="Save" onclick="saveBot()">💾</button>
-        <button class="sidebar-btn" title="Blocks List" onclick="toggleBlocksList()">☰</button>
-        <div class="sidebar-divider"></div>
-        <button class="sidebar-btn" title="Chart" onclick="showChart()">📈</button>
-        <button class="sidebar-btn" title="Summary" onclick="showSummary()">📋</button>
-        <button class="sidebar-btn" title="Transactions" onclick="showTransactions()">🎯</button>
-        <div class="sidebar-divider"></div>
-        <button class="sidebar-btn" title="Trade History" onclick="showHistory()">📉</button>
-        <div class="sidebar-divider"></div>
-        <button class="sidebar-btn" title="Undo" onclick="undoAction()">↩</button>
-        <button class="sidebar-btn" title="Redo" onclick="redoAction()">↪</button>
-        <div class="sidebar-divider"></div>
-        <button class="sidebar-btn" title="Zoom In" onclick="zoomIn()">🔍</button>
-        <button class="sidebar-btn" title="Zoom Out" onclick="zoomOut()">🔎</button>
+    <div class="bot-runner-layout">
+      <div class="bot-library-panel">
+        <div class="panel-header">🤖 Bot Library</div>
+        <div id="botLibraryList"></div>
+        <div class="panel-divider"></div>
+        <div class="panel-header">⚙️ Settings</div>
+        <div class="bot-settings">
+          <div class="setting-row"><label>Initial Stake ($)</label><input type="number" id="bs_stake" value="1" min="0.35" step="0.01"/></div>
+          <div class="setting-row"><label>Take Profit ($)</label><input type="number" id="bs_tp" value="10" min="0" step="0.5"/></div>
+          <div class="setting-row"><label>Stop Loss ($)</label><input type="number" id="bs_sl" value="10" min="0" step="0.5"/></div>
+          <div class="setting-row"><label>Max Trades</label><input type="number" id="bs_max" value="100" min="1" step="1"/></div>
+        </div>
+        <div class="panel-divider"></div>
+        <div class="panel-header">📂 Custom Bot</div>
+        <label class="upload-xml-btn"><input type="file" id="customXmlInput" accept=".xml" style="display:none" onchange="loadCustomXML(event)"/>Upload XML Bot</label>
       </div>
-      <div class="builder-main">
-        <div class="builder-toolbar">
-          <div class="toolbar-left">
-            <button class="blocks-menu-btn" onclick="toggleBlocksMenu()">Blocks Menu <span>▼</span></button>
-            <button class="quick-strategy-btn" onclick="showQuickStrategy()">Quick strategy</button>
-          </div>
-          <div class="toolbar-right">
-            <label class="xml-upload-label">
-              <input type="file" id="xmlFileInput" accept=".xml" onchange="handleXMLUpload(event)" style="display:none"/>
-              📂 Import XML
-            </label>
-            <button class="export-btn" onclick="exportXML()">💾 Export XML</button>
+      <div class="bot-canvas-panel">
+        <div class="bot-canvas-header">
+          <div id="activeBotName" class="active-bot-name">No bot selected</div>
+          <div class="bot-canvas-controls">
+            <button id="botRunBtn" class="bot-run-btn" onclick="startBot()" disabled>▶ Run</button>
+            <button id="botStopBtn" class="bot-stop-btn hidden" onclick="stopBot()">■ Stop</button>
           </div>
         </div>
-        <div class="dbot-container">
-          <iframe id="dbotFrame" src="https://bot.deriv.com" title="NovaTrade Bot Builder"
-            allow="clipboard-read; clipboard-write"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads">
-          </iframe>
+        <div class="bot-stats-row">
+          <div class="bstat"><span class="bstat-label">Trades</span><span class="bstat-val" id="stat_trades">0</span></div>
+          <div class="bstat"><span class="bstat-label">Wins</span><span class="bstat-val green" id="stat_wins">0</span></div>
+          <div class="bstat"><span class="bstat-label">Losses</span><span class="bstat-val red" id="stat_losses">0</span></div>
+          <div class="bstat"><span class="bstat-label">Stake</span><span class="bstat-val" id="stat_stake">—</span></div>
+          <div class="bstat"><span class="bstat-label">P&L</span><span class="bstat-val" id="stat_pnl">$0.00</span></div>
         </div>
-      </div>
-    </div>
-    <div class="run-bar">
-      <button class="run-btn" onclick="toggleBot()"><span class="run-icon">▶</span> Run</button>
-      <div class="execution-info">
-        <span class="exec-label">Execution</span>
-        <span class="exec-speed" onclick="toggleExecSpeed()">SLOW</span>
+        <div class="bot-status-bar">
+          <span id="botStatusDot" class="status-dot idle"></span>
+          <span id="botStatusText">Select a bot and press Run</span>
+        </div>
+        <div class="bot-trade-log" id="botTradeLog">
+          <div class="log-placeholder">Trade log will appear here when bot is running...</div>
+        </div>
       </div>
     </div>
   </section>
-  <section id="page-analysis" class="page">
+    <section id="page-analysis" class="page">
     <div class="analysis-tabs">
       <button class="atab active" id="atab-dcircle" onclick="switchAnalysisTab('dcircle')">DCIRCLE</button>
       <button class="atab" id="atab-tool" onclick="switchAnalysisTab('tool')">AnalysisTool</button>
