@@ -18,6 +18,7 @@
   --font-body: 'Inter', sans-serif;
   --radius: 8px;
   --navbar-h: 56px;
+  --banner-h: 40px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -227,8 +228,8 @@ body {
    MAIN CONTAINER
 ═══════════════════════════════════════ */
 #appContainer {
-  margin-top: calc(var(--navbar-h) + 37px);
-  height: calc(100vh - var(--navbar-h) - 37px);
+  margin-top: calc(var(--navbar-h) + var(--banner-h));
+  height: calc(100vh - var(--navbar-h) - var(--banner-h));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -440,7 +441,7 @@ body {
 ═══════════════════════════════════════ */
 .bot-builder-layout {
   display: flex;
-  height: calc(100vh - var(--navbar-h) - 37px - 57px);
+  height: calc(100vh - var(--navbar-h) - var(--banner-h) - 57px);
   overflow: hidden;
 }
 
@@ -1395,7 +1396,7 @@ body {
   }
 
   #appContainer {
-    margin-top: calc(var(--navbar-h) + 37px);
+    margin-top: calc(var(--navbar-h) + var(--banner-h));
   }
 
   .dashboard-hero { padding: 14px; }
@@ -1439,7 +1440,7 @@ body {
   }
 
   .bot-builder-layout {
-    height: calc(100vh - var(--navbar-h) - 37px - 57px);
+    height: calc(100vh - var(--navbar-h) - var(--banner-h) - 57px);
   }
 
   .builder-sidebar {
@@ -1532,7 +1533,7 @@ body {
   .nav-icon { font-size: 18px; }
 
   #appContainer {
-    margin-top: calc(var(--navbar-h) + 37px);
+    margin-top: calc(var(--navbar-h) + var(--banner-h));
     margin-bottom: 56px;
   }
 
@@ -1890,7 +1891,7 @@ body {
 
 /* ── BOT BUILDER FULLSCREEN FIX ── */
 .bot-builder-layout {
-  height: calc(100vh - var(--navbar-h) - 37px);
+  height: calc(100vh - var(--navbar-h) - var(--banner-h));
   display: flex;
 }
 
@@ -2788,7 +2789,7 @@ body {
 .ai-log { flex: 1; min-height: 0; overflow-y: auto; }
 
 @media (max-width: 768px) {
-  #appContainer { height: auto !important; min-height: calc(100vh - var(--navbar-h) - 37px); overflow-y: auto !important; display: block !important; }
+  #appContainer { height: auto !important; min-height: calc(100vh - var(--navbar-h) - var(--banner-h)); overflow-y: auto !important; display: block !important; }
   .page.active { display: block !important; overflow: visible !important; min-height: unset !important; flex: unset !important; }
   #page-ai-scalper.page.active { overflow: visible !important; }
   .ai-scalper-wrap { overflow: visible !important; display: block !important; min-height: unset; }

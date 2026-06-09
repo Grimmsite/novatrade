@@ -1367,10 +1367,7 @@ function logout() {
   navigate('dashboard');
 }
 
-function dismissRisk() {
-  document.getElementById('riskBanner').style.display = 'none';
-  localStorage.setItem('nt_risk_dismissed', '1');
-}
+
 
 
 
@@ -2170,4 +2167,19 @@ function aiHandleMsg(msg, pick) {
     if (ai.ws) { try{ai.ws.close();}catch(e){} ai.ws=null; }
     setTimeout(function(){if(ai.running)aiTradeLoop();},800);
   }
+}
+
+// Dynamic banner height
+function updateBannerHeight() {
+  var b = document.getElementById('riskBanner');
+  var h = (b && b.offsetHeight > 0) ? b.offsetHeight : 0;
+  document.documentElement.style.setProperty('--banner-h', h + 'px');
+}
+document.addEventListener('DOMContentLoaded', function() {
+  updateBannerHeight();
+  window.addEventListener('resize', updateBannerHeight);
+});
+function dismissRisk() {
+  var b = document.getElementById('riskBanner');
+  if (b) { b.style.display = 'none'; updateBannerHeight(); }
 }
