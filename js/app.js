@@ -2015,6 +2015,7 @@ function aiPickBestSignal(ticks, decimals) {
   var thresh = ai.cfg.conf;
   var passing = [freqSig,patSig,momSig].filter(function(s){ return s && s.confidence >= thresh; });
   if (!passing.length) { var fallback = [freqSig,patSig,momSig].filter(Boolean); if (fallback.length) passing = [fallback.reduce(function(a,b){return a.confidence>=b.confidence?a:b;})]; }
+  if (!passing.length) { var fallback = [freqSig,patSig,momSig].filter(Boolean); if (fallback.length) passing = [fallback.reduce(function(a,b){return a.confidence>=b.confidence?a:b;})]; }
   if (passing.length < 2) return null;
   // Pick highest confidence
   var best = passing.reduce(function(a,b){ return a.confidence >= b.confidence ? a : b; });
@@ -2080,6 +2081,7 @@ async function aiStart() {
   ai.initStake   = parseFloat(document.getElementById('ai_stake').value)||1;
   ai.stake       = ai.initStake;
   ai.pnl=0; ai.trades=0; ai.wins=0; ai.losses=0; ai.recStep=0;
+  ai.wsUrl = null;
   ai.wsUrl = null;
   ai.stopped=false; ai.running=true;
   document.getElementById('aiStartBtn').style.display='none';
