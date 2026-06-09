@@ -2009,9 +2009,10 @@ function aiPickBestSignal(ticks, decimals) {
   var pC = patSig  ? Math.round(patSig.confidence)  : 0;
   var mC = momSig  ? Math.round(momSig.confidence)  : 0;
   aiUpdateSignals(fC, pC, mC);
-  // Require at least 2 signals above threshold
+  // Require at least 1 signal above threshold
   var thresh = ai.cfg.conf;
   var passing = [freqSig,patSig,momSig].filter(function(s){ return s && s.confidence >= thresh; });
+  if (!passing.length) { var fallback = [freqSig,patSig,momSig].filter(Boolean); if (fallback.length) passing = [fallback.reduce(function(a,b){return a.confidence>=b.confidence?a:b;})]; }
   if (passing.length < 2) return null;
   // Pick highest confidence
   var best = passing.reduce(function(a,b){ return a.confidence >= b.confidence ? a : b; });
@@ -2077,6 +2078,7 @@ async function aiStart() {
   ai.initStake   = parseFloat(document.getElementById('ai_stake').value)||1;
   ai.stake       = ai.initStake;
   ai.pnl=0; ai.trades=0; ai.wins=0; ai.losses=0; ai.recStep=0;
+  ai.wsUrl = null;
   ai.stopped=false; ai.running=true;
   document.getElementById('aiStartBtn').style.display='none';
   document.getElementById('aiStopBtn').style.display='';
@@ -2107,7 +2109,7 @@ async function aiTradeLoop() {
   var pick = aiPickBestMarket();
   if (!pick) {
     aiLog('No high-confidence signal — waiting...','info');
-    setTimeout(function(){ if(ai.running) aiTradeLoop(); }, 2000);
+    setTimeout(function(){ if(ai.running) aiTradeLoop(); }, 500);
     return;
   }
 
@@ -2118,9 +2120,9 @@ async function aiTradeLoop() {
   aiLog('Signal: '+pick.sym+' | '+pick.sig.ct+(pick.sig.barrier!=null?' barrier:'+pick.sig.barrier:'')+' | conf:'+Math.round(pick.sig.confidence)+'%','info');
 
   try {
-    var wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
+    if (!ai.wsUrl) ai.wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
     if (!ai.running) return;
-    ai.ws = new WebSocket(wsUrl);
+    ai.ws = new WebSocket(ai.wsUrl);
     ai.ws.onopen = function() {
       aiSetStatus('running','Trading '+pick.sym+' — stake $'+ai.stake.toFixed(2));
       var proposal = {
@@ -2132,18 +2134,18 @@ async function aiTradeLoop() {
       ai.ws.send(JSON.stringify(proposal));
     };
     ai.ws.onmessage = function(e){ aiHandleMsg(JSON.parse(e.data), pick); };
-    ai.ws.onerror   = function(){ aiLog('WS error — retrying','info'); setTimeout(function(){if(ai.running)aiTradeLoop();},3000); };
+    ai.ws.onerror   = function(){ ai.wsUrl=null; aiLog('WS error — retrying','info'); setTimeout(function(){if(ai.running)aiTradeLoop();},1000); };
     ai.ws.onclose   = function(){};
   } catch(err) {
     aiLog('Connect error: '+err.message,'info');
-    setTimeout(function(){if(ai.running)aiTradeLoop();},4000);
+    setTimeout(function(){if(ai.running)aiTradeLoop();},1000);
   }
 }
 
 function aiHandleMsg(msg, pick) {
   if (msg.error) {
     aiLog('API error: '+msg.error.message,'info');
-    setTimeout(function(){if(ai.running)aiTradeLoop();},2000);
+    setTimeout(function(){if(ai.running)aiTradeLoop();},500);
     return;
   }
   if (msg.msg_type==='proposal' && msg.proposal) {
@@ -2179,7 +2181,7 @@ function aiHandleMsg(msg, pick) {
     }
     aiUpdateStats();
     if (ai.ws) { try{ai.ws.close();}catch(e){} ai.ws=null; }
-    setTimeout(function(){if(ai.running)aiTradeLoop();},800);
+    setTimeout(function(){if(ai.running)aiTradeLoop();},200);
   }
 }
 
