@@ -28,7 +28,6 @@ body {
   background: var(--black-1);
   color: var(--text-primary);
   font-family: var(--font-body);
-  min-height: 100vh;
   overflow-x: hidden;
 }
 
@@ -2878,13 +2877,12 @@ body { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 .ai-right { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
 .ai-log { flex: 1; min-height: 0; overflow-y: auto; }
 
-/* ── MOBILE ──────────────────────────────────────── */
 @media (max-width: 768px) {
-  #appContainer { height: calc(100vh - var(--navbar-h) - 37px); overflow-y: auto; display: block; }
+  #appContainer { height: auto; min-height: calc(100vh - var(--navbar-h) - 37px); overflow: visible; display: block; }
   .page.active { display: block; overflow: visible; min-height: unset; flex: unset; }
   #page-ai-scalper.page.active { display: block; overflow: visible; }
-  .ai-scalper-wrap { overflow: visible; min-height: unset; }
-  .ai-scalper-body { flex-direction: column; overflow: visible; height: auto; }
+  .ai-scalper-wrap { overflow: visible; min-height: unset; display: block; }
+  .ai-scalper-body { display: block; overflow: visible; height: auto; }
   .ai-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid #1a1a1a; overflow-y: visible; height: auto; }
   .ai-right { min-height: 400px; overflow: visible; }
   .ai-log { min-height: 300px; overflow-y: auto; }
