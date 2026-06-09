@@ -1543,6 +1543,33 @@ var brun = {
   ws:null
 };
 
+
+function brunToggleBarrier() {
+  var ct = document.getElementById('brun_ct');
+  var row = document.getElementById('brun_barrier_row');
+  if (!ct || !row) return;
+  var needs = ['DIGITOVER','DIGITUNDER'].indexOf(ct.value) !== -1;
+  row.style.display = needs ? '' : 'none';
+}
+
+function brunPopulateSettings(bot) {
+  var cfg = bot.cfg;
+  var sym  = document.getElementById('brun_symbol');
+  var ct   = document.getElementById('brun_ct');
+  var dur  = document.getElementById('brun_dur');
+  var duru = document.getElementById('brun_dur_unit');
+  var barr = document.getElementById('brun_barrier');
+  var mult = document.getElementById('brun_mult');
+  var stk  = document.getElementById('brun_stake');
+  if (sym)  sym.value  = cfg.symbol    || 'R_100';
+  if (ct)   ct.value   = cfg.ct        || 'CALL';
+  if (dur)  dur.value  = cfg.dur       || 1;
+  if (duru) duru.value = cfg.dur_unit  || 't';
+  if (barr) barr.value = cfg.barrier !== null && cfg.barrier !== undefined ? cfg.barrier : 4;
+  if (mult) mult.value = cfg.multiplier|| 2.1;
+  brunToggleBarrier();
+}
+
 function brunRender() {
   var el = document.getElementById('brun-library');
   if (!el) return;
@@ -1566,6 +1593,7 @@ function brunSelect(id) {
   var rb = document.getElementById('brunRunBtn');
   if (nm) nm.textContent = brun.bot ? brun.bot.name : 'No bot selected';
   if (rb) rb.disabled = !brun.bot || !state.bearerToken;
+  if (brun.bot) brunPopulateSettings(brun.bot);
   brunSetStatus('idle', brun.bot ? 'Ready — press Run to start' : 'Select a bot and press Run');
 }
 
@@ -1644,6 +1672,14 @@ async function brunStart() {
   if (!state.bearerToken || !state.accountId) { showToast('Please log in first'); return; }
   if (!brun.bot) { showToast('Select a bot first'); return; }
   if (brun.running) return;
+  // Read all settings from panel
+  brun.bot.cfg.symbol    = document.getElementById('brun_symbol').value;
+  brun.bot.cfg.ct        = document.getElementById('brun_ct').value;
+  brun.bot.cfg.dur       = parseInt(document.getElementById('brun_dur').value)||1;
+  brun.bot.cfg.dur_unit  = document.getElementById('brun_dur_unit').value;
+  var barrierRow = document.getElementById('brun_barrier_row');
+  brun.bot.cfg.barrier   = (barrierRow && barrierRow.style.display!=='none') ? parseInt(document.getElementById('brun_barrier').value) : null;
+  brun.bot.cfg.multiplier= parseFloat(document.getElementById('brun_mult').value)||2.1;
   brun.initStake = parseFloat(document.getElementById('brun_stake').value)||1;
   brun.stake     = brun.initStake;
   brun.tp        = parseFloat(document.getElementById('brun_tp').value)||10;

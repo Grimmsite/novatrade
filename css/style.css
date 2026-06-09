@@ -2607,8 +2607,9 @@ body {
 /* ═══════════════════════════════════════
    NATIVE BOT RUNNER
 ═══════════════════════════════════════ */
-.brun-layout{display:flex;height:calc(100vh - 120px);overflow:hidden}
-.brun-sidebar{width:255px;min-width:255px;background:#111;border-right:1px solid #222;overflow-y:auto;display:flex;flex-direction:column;padding-bottom:16px}
+.brun-wrap{display:flex;height:calc(100vh - 120px);overflow:hidden}
+.brun-left{width:230px;min-width:230px;background:#111;border-right:1px solid #222;overflow-y:auto;display:flex;flex-direction:column;padding-bottom:16px}
+.brun-right{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .brun-panel-hdr{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;padding:14px 14px 8px}
 .brun-divider{height:1px;background:#222;margin:8px 0}
 .brun-card{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-left:3px solid transparent;transition:background 0.15s}
@@ -2658,3 +2659,12 @@ body {
   .brun-sidebar{width:100%;min-width:unset;border-right:none;border-bottom:1px solid #222;max-height:280px}
   .brun-log-row{grid-template-columns:60px 100px 60px 55px 75px;font-size:11px;padding:6px 10px}
 }
+
+.brun-settings-panel{border-top:1px solid #222;background:#0f0f0f;padding:14px 18px}
+.brun-settings-title{font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.brun-settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.brun-sf{display:flex;flex-direction:column;gap:4px}
+.brun-sf label{font-size:11px;color:#777}
+.brun-sf input,.brun-sf select{background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#fff;padding:7px 10px;font-size:13px;width:100%;box-sizing:border-box}
+.brun-sf input:focus,.brun-sf select:focus{outline:none;border-color:#f0c040}
+.brun-sf select option{background:#1a1a1a}
