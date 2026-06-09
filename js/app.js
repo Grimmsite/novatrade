@@ -1569,6 +1569,43 @@ function brunOnTradeTypeChange() {
   brunToggleBarrier();
 }
 
+
+function brunLoadSymbols() {
+  var sel = document.getElementById('brun_symbol');
+  if (!sel) return;
+  var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+  ws.onopen = function() {
+    ws.send(JSON.stringify({ active_symbols: 'brief', product_type: 'basic' }));
+  };
+  ws.onmessage = function(e) {
+    var msg = JSON.parse(e.data);
+    ws.close();
+    if (!msg.active_symbols) return;
+    var groups = {};
+    msg.active_symbols.forEach(function(s) {
+      var g = s.market_display_name || s.market || 'Other';
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(s);
+    });
+    sel.innerHTML = '';
+    Object.keys(groups).sort().forEach(function(g) {
+      var og = document.createElement('optgroup');
+      og.label = g;
+      groups[g].forEach(function(s) {
+        var o = document.createElement('option');
+        o.value = s.symbol;
+        o.textContent = s.display_name;
+        if (s.symbol === 'R_50') o.selected = true;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+  };
+  ws.onerror = function() {
+    sel.innerHTML = '<option value="R_50">Volatility 50 (fallback)</option>';
+  };
+}
+
 function brunToggleBarrier() {
   var ct = document.getElementById('brun_ct');
   var row = document.getElementById('brun_barrier_row');
@@ -1805,4 +1842,4 @@ function brunStop() {
   brunSetStatus('idle','Stopped — '+brun.trades+' trades, P&L: '+(brun.pnl>=0?'+':'')+'$'+brun.pnl.toFixed(2));
 }
 
-document.addEventListener('DOMContentLoaded', function(){ brunRender(); });
+document.addEventListener('DOMContentLoaded', function(){ brunRender(); brunLoadSymbols(); });
