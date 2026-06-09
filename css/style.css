@@ -2668,3 +2668,17 @@ body {
 .brun-sf input,.brun-sf select{background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#fff;padding:7px 10px;font-size:13px;width:100%;box-sizing:border-box}
 .brun-sf input:focus,.brun-sf select:focus{outline:none;border-color:#f0c040}
 .brun-sf select option{background:#1a1a1a}
+
+/* ── BOT RUNNER MOBILE FIX ── */
+@media(max-width:640px){
+  .brun-wrap{flex-direction:column;height:auto;overflow:visible}
+  .brun-left{width:100%;min-width:unset;border-right:none;border-bottom:1px solid #222;max-height:260px;overflow-y:auto}
+  .brun-right{overflow:visible}
+  .brun-log{max-height:220px;overflow-y:auto}
+  .brun-stats{flex-wrap:wrap}
+  .brun-stat{min-width:33%;border-bottom:1px solid #1a1a1a}
+  .brun-settings-grid{grid-template-columns:1fr 1fr}
+  .brun-log-row{grid-template-columns:60px 90px 60px 50px 70px;font-size:11px;padding:6px 10px;gap:4px}
+  .brun-topbar{flex-wrap:wrap;gap:8px}
+  .brun-active-name{font-size:13px}
+}
