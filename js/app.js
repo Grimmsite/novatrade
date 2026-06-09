@@ -182,7 +182,7 @@ async function authorizeToken(bearerToken) {
 
     // Use first account (prefer real over demo)
     const accounts = acctData.data;
-    const account = accounts.find(a => !a.is_virtual) || accounts[0];
+    const account = accounts.find(function(a){ return a.account_type === "real"; }) || accounts[0];
     const accountId = account.account_id;
 
     state.accountId = accountId;
