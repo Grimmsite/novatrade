@@ -22,13 +22,8 @@
   <nav class="nav-tabs" id="navTabs">
     <button class="nav-tab active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">⌂</span> Dashboard</button>
     <button class="nav-tab" data-page="bot-builder" onclick="navigate('bot-builder')"><span class="nav-icon">⚙</span> Bot Builder</button>
+    <button class="nav-tab" data-page="ai-scalper" onclick="navigate('ai-scalper')"><span class="nav-icon">🧠</span> AI Scalper</button>
     <button class="nav-tab" data-page="analysis" onclick="navigate('analysis')"><span class="nav-icon">◎</span> Analysis Tools</button>
-    <button class="nav-tab" data-page="free-bots" onclick="navigate('free-bots')"><span class="nav-icon">🤖</span> Free Bots</button>
-    <button class="nav-tab" data-page="auto-trader" onclick="navigate('auto-trader')"><span class="nav-icon">🔥</span> Auto Trader</button>
-    <button class="nav-tab" data-page="ultimate-bot" onclick="navigate('ultimate-bot')"><span class="nav-icon">⚡</span> Ultimate Bot</button>
-    <button class="nav-tab" data-page="dtrader" onclick="navigate('dtrader')"><span class="nav-icon">📺</span> DTrader</button>
-    <button class="nav-tab" data-page="manual-trading" onclick="navigate('manual-trading')"><span class="nav-icon">📈</span> Manual Trading</button>
-    <button class="nav-tab" data-page="speedbot" onclick="navigate('speedbot')"><span class="nav-icon">🚀</span> Speedbot</button>
   </nav>
   <div class="nav-right">
     <button class="btn-secondary" onclick="showApiModal()" id="apiTokenBtn">API Token</button>
@@ -419,56 +414,6 @@
       </div>
     </div>
   </section>
-
-  <section id="page-free-bots" class="page">
-    <div class="bots-header"><h2>Free & Premium Bots</h2><p>Browse, load, and edit ready-made strategies</p></div>
-    <div class="bots-filter">
-      <button class="filter-btn active" onclick="filterBots('all',event)">All</button>
-      <button class="filter-btn" onclick="filterBots('even_odd',event)">Even/Odd</button>
-      <button class="filter-btn" onclick="filterBots('over_under',event)">Over/Under</button>
-      <button class="filter-btn" onclick="filterBots('rise_fall',event)">Rise/Fall</button>
-      <button class="filter-btn" onclick="filterBots('match_diff',event)">Match/Differs</button>
-    </div>
-    <div class="bots-grid" id="botsGrid"></div>
-  </section>
-  <section id="page-auto-trader" class="page">
-    <div class="auto-trader-container">
-      <h2>Auto Trader</h2>
-      <p class="auto-desc">Configure and run automated strategies with smart risk management.</p>
-      <div class="auto-form-card">
-        <div class="form-group"><label>Market</label>
-          <select id="autoMarket">
-            <option value="R_100">Volatility 100 (1s) Index</option>
-            <option value="R_75">Volatility 75 (1s) Index</option>
-            <option value="R_50">Volatility 50 (1s) Index</option>
-            <option value="R_25">Volatility 25 (1s) Index</option>
-            <option value="R_10">Volatility 10 (1s) Index</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Trade Type</label>
-          <select id="autoTradeType">
-            <option value="DIGITEVEN">Even/Odd</option>
-            <option value="DIGITOVER">Over/Under</option>
-            <option value="CALL">Rise/Fall</option>
-            <option value="DIGITMATCH">Match/Differs</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Stake (USD)</label><input type="number" id="autoStake" value="0.5" min="0.35" step="0.01" /></div>
-        <div class="form-group"><label>Take Profit (USD)</label><input type="number" id="autoTakeProfit" value="10" min="1" /></div>
-        <div class="form-group"><label>Stop Loss (USD)</label><input type="number" id="autoStopLoss" value="5" min="1" /></div>
-        <div class="form-group"><label>Martingale Multiplier</label><input type="number" id="autoMartingale" value="2" min="1" step="0.1" /></div>
-        <div class="form-group"><label>Max Martingale Steps</label><input type="number" id="autoMaxSteps" value="3" min="1" max="10" /></div>
-        <button class="start-auto-btn" onclick="startAutoTrader()">▶ Start Auto Trader</button>
-        <button class="stop-auto-btn hidden" id="stopAutoBtn" onclick="stopAutoTrader()">■ Stop</button>
-      </div>
-      <div class="auto-stats">
-        <div class="stat-box"><span class="stat-label">Balance</span><span class="stat-val" id="autoBalance">—</span></div>
-        <div class="stat-box"><span class="stat-label">Profit/Loss</span><span class="stat-val" id="autoPnl">—</span></div>
-        <div class="stat-box"><span class="stat-label">Wins</span><span class="stat-val" id="autoWins">0</span></div>
-        <div class="stat-box"><span class="stat-label">Losses</span><span class="stat-val" id="autoLosses">0</span></div>
-      </div>
-    </div>
-  </section>
 </main>
 <div class="modal-overlay hidden" id="loginModal">
   <div class="modal">
@@ -548,5 +493,56 @@
 <div class="oauth-loading hidden" id="oauthLoading"><div class="oauth-loading-inner"><div class="overlay-spinner"></div><p>Connecting to Deriv...</p></div></div>
 <div class="toast hidden" id="toast"></div>
 <script src="js/app.js"></script>
+
+  <section id="page-ai-scalper" class="page">
+    <div class="ai-scalper-wrap">
+      <div class="ai-scalper-header">
+        <div class="ai-scalper-title">🧠 AI Scalper</div>
+        <div class="ai-scalper-subtitle">Autonomous multi-market scalping engine</div>
+        <div class="ai-status-bar">
+          <span class="ai-dot idle" id="aiDot"></span>
+          <span id="aiStatusText">Idle — configure and start</span>
+        </div>
+      </div>
+      <div class="ai-scalper-body">
+        <!-- Left: controls -->
+        <div class="ai-left">
+          <div class="ai-section-title">Session Settings</div>
+          <div class="ai-field"><label>Initial Stake ($)</label><input type="number" id="ai_stake" value="1" min="0.35" step="0.01"></div>
+          <div class="ai-field"><label>Take Profit ($)</label><input type="number" id="ai_tp" value="20" min="1"></div>
+          <div class="ai-field"><label>Stop Loss ($)</label><input type="number" id="ai_sl" value="10" min="1"></div>
+          <div class="ai-field"><label>Max Trades</label><input type="number" id="ai_max" value="200" min="1"></div>
+          <div class="ai-field"><label>Min Confidence (%)</label><input type="number" id="ai_conf" value="65" min="50" max="95"></div>
+          <div class="ai-field"><label>Recovery Multiplier</label><input type="number" id="ai_mult" value="1.8" min="1.1" step="0.1"></div>
+          <div class="ai-field"><label>Max Recovery Steps</label><input type="number" id="ai_maxrec" value="3" min="1" max="6"></div>
+          <div class="ai-field"><label>Tick Sample Size</label><input type="number" id="ai_ticks" value="50" min="20" max="200"></div>
+          <div class="ai-btn-row">
+            <button class="ai-btn-start" id="aiStartBtn" onclick="aiStart()">▶ Start AI</button>
+            <button class="ai-btn-stop" id="aiStopBtn" onclick="aiStop()" style="display:none">■ Stop</button>
+          </div>
+          <div class="ai-section-title" style="margin-top:18px">Session Stats</div>
+          <div class="ai-stats-grid">
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_pnl">$0.00</div><div class="ai-stat-lbl">P&L</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_trades">0</div><div class="ai-stat-lbl">Trades</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_wins">0</div><div class="ai-stat-lbl">Wins</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_losses">0</div><div class="ai-stat-lbl">Losses</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_winrate">0%</div><div class="ai-stat-lbl">Win Rate</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_curstake">$0.00</div><div class="ai-stat-lbl">Cur Stake</div></div>
+          </div>
+          <div class="ai-section-title" style="margin-top:18px">Active Market</div>
+          <div class="ai-market-display" id="ai_market_display">Scanning...</div>
+          <div class="ai-section-title" style="margin-top:18px">Signal Confidence</div>
+          <div class="ai-signal-row"><span>Digit Freq</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_freq" style="width:0%"></div></div><span id="ai_sig_freq_pct">0%</span></div>
+          <div class="ai-signal-row"><span>Pattern</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_pat" style="width:0%"></div></div><span id="ai_sig_pat_pct">0%</span></div>
+          <div class="ai-signal-row"><span>Momentum</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_mom" style="width:0%"></div></div><span id="ai_sig_mom_pct">0%</span></div>
+        </div>
+        <!-- Right: live log -->
+        <div class="ai-right">
+          <div class="ai-section-title">Live Trade Log</div>
+          <div class="ai-log" id="ai-log"></div>
+        </div>
+      </div>
+    </div>
+  </section>
 </body>
 </html>
