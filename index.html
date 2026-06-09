@@ -414,6 +414,58 @@
       </div>
     </div>
   </section>
+
+
+  <section id="page-ai-scalper" class="page">
+    <div class="ai-scalper-wrap">
+      <div class="ai-scalper-header">
+        <div class="ai-scalper-title">🧠 AI Scalper</div>
+        <div class="ai-scalper-subtitle">Autonomous multi-market scalping engine</div>
+        <div class="ai-status-bar">
+          <span class="ai-dot idle" id="aiDot"></span>
+          <span id="aiStatusText">Idle — configure and start</span>
+        </div>
+      </div>
+      <div class="ai-scalper-body">
+        <!-- Left: controls -->
+        <div class="ai-left">
+          <div class="ai-section-title">Session Settings</div>
+          <div class="ai-field"><label>Initial Stake ($)</label><input type="number" id="ai_stake" value="1" min="0.35" step="0.01"></div>
+          <div class="ai-field"><label>Take Profit ($)</label><input type="number" id="ai_tp" value="20" min="1"></div>
+          <div class="ai-field"><label>Stop Loss ($)</label><input type="number" id="ai_sl" value="10" min="1"></div>
+          <div class="ai-field"><label>Max Trades</label><input type="number" id="ai_max" value="200" min="1"></div>
+          <div class="ai-field"><label>Min Confidence (%)</label><input type="number" id="ai_conf" value="65" min="50" max="95"></div>
+          <div class="ai-field"><label>Recovery Multiplier</label><input type="number" id="ai_mult" value="1.8" min="1.1" step="0.1"></div>
+          <div class="ai-field"><label>Max Recovery Steps</label><input type="number" id="ai_maxrec" value="3" min="1" max="6"></div>
+          <div class="ai-field"><label>Tick Sample Size</label><input type="number" id="ai_ticks" value="50" min="20" max="200"></div>
+          <div class="ai-btn-row">
+            <button class="ai-btn-start" id="aiStartBtn" onclick="aiStart()">▶ Start AI</button>
+            <button class="ai-btn-stop" id="aiStopBtn" onclick="aiStop()" style="display:none">■ Stop</button>
+          </div>
+          <div class="ai-section-title" style="margin-top:18px">Session Stats</div>
+          <div class="ai-stats-grid">
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_pnl">$0.00</div><div class="ai-stat-lbl">P&L</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_trades">0</div><div class="ai-stat-lbl">Trades</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_wins">0</div><div class="ai-stat-lbl">Wins</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_losses">0</div><div class="ai-stat-lbl">Losses</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_winrate">0%</div><div class="ai-stat-lbl">Win Rate</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="ai_curstake">$0.00</div><div class="ai-stat-lbl">Cur Stake</div></div>
+          </div>
+          <div class="ai-section-title" style="margin-top:18px">Active Market</div>
+          <div class="ai-market-display" id="ai_market_display">Scanning...</div>
+          <div class="ai-section-title" style="margin-top:18px">Signal Confidence</div>
+          <div class="ai-signal-row"><span>Digit Freq</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_freq" style="width:0%"></div></div><span id="ai_sig_freq_pct">0%</span></div>
+          <div class="ai-signal-row"><span>Pattern</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_pat" style="width:0%"></div></div><span id="ai_sig_pat_pct">0%</span></div>
+          <div class="ai-signal-row"><span>Momentum</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_mom" style="width:0%"></div></div><span id="ai_sig_mom_pct">0%</span></div>
+        </div>
+        <!-- Right: live log -->
+        <div class="ai-right">
+          <div class="ai-section-title">Live Trade Log</div>
+          <div class="ai-log" id="ai-log"></div>
+        </div>
+      </div>
+    </div>
+  </section>
 </main>
 <div class="modal-overlay hidden" id="loginModal">
   <div class="modal">
@@ -493,56 +545,5 @@
 <div class="oauth-loading hidden" id="oauthLoading"><div class="oauth-loading-inner"><div class="overlay-spinner"></div><p>Connecting to Deriv...</p></div></div>
 <div class="toast hidden" id="toast"></div>
 <script src="js/app.js"></script>
-
-  <section id="page-ai-scalper" class="page">
-    <div class="ai-scalper-wrap">
-      <div class="ai-scalper-header">
-        <div class="ai-scalper-title">🧠 AI Scalper</div>
-        <div class="ai-scalper-subtitle">Autonomous multi-market scalping engine</div>
-        <div class="ai-status-bar">
-          <span class="ai-dot idle" id="aiDot"></span>
-          <span id="aiStatusText">Idle — configure and start</span>
-        </div>
-      </div>
-      <div class="ai-scalper-body">
-        <!-- Left: controls -->
-        <div class="ai-left">
-          <div class="ai-section-title">Session Settings</div>
-          <div class="ai-field"><label>Initial Stake ($)</label><input type="number" id="ai_stake" value="1" min="0.35" step="0.01"></div>
-          <div class="ai-field"><label>Take Profit ($)</label><input type="number" id="ai_tp" value="20" min="1"></div>
-          <div class="ai-field"><label>Stop Loss ($)</label><input type="number" id="ai_sl" value="10" min="1"></div>
-          <div class="ai-field"><label>Max Trades</label><input type="number" id="ai_max" value="200" min="1"></div>
-          <div class="ai-field"><label>Min Confidence (%)</label><input type="number" id="ai_conf" value="65" min="50" max="95"></div>
-          <div class="ai-field"><label>Recovery Multiplier</label><input type="number" id="ai_mult" value="1.8" min="1.1" step="0.1"></div>
-          <div class="ai-field"><label>Max Recovery Steps</label><input type="number" id="ai_maxrec" value="3" min="1" max="6"></div>
-          <div class="ai-field"><label>Tick Sample Size</label><input type="number" id="ai_ticks" value="50" min="20" max="200"></div>
-          <div class="ai-btn-row">
-            <button class="ai-btn-start" id="aiStartBtn" onclick="aiStart()">▶ Start AI</button>
-            <button class="ai-btn-stop" id="aiStopBtn" onclick="aiStop()" style="display:none">■ Stop</button>
-          </div>
-          <div class="ai-section-title" style="margin-top:18px">Session Stats</div>
-          <div class="ai-stats-grid">
-            <div class="ai-stat"><div class="ai-stat-val" id="ai_pnl">$0.00</div><div class="ai-stat-lbl">P&L</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="ai_trades">0</div><div class="ai-stat-lbl">Trades</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="ai_wins">0</div><div class="ai-stat-lbl">Wins</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="ai_losses">0</div><div class="ai-stat-lbl">Losses</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="ai_winrate">0%</div><div class="ai-stat-lbl">Win Rate</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="ai_curstake">$0.00</div><div class="ai-stat-lbl">Cur Stake</div></div>
-          </div>
-          <div class="ai-section-title" style="margin-top:18px">Active Market</div>
-          <div class="ai-market-display" id="ai_market_display">Scanning...</div>
-          <div class="ai-section-title" style="margin-top:18px">Signal Confidence</div>
-          <div class="ai-signal-row"><span>Digit Freq</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_freq" style="width:0%"></div></div><span id="ai_sig_freq_pct">0%</span></div>
-          <div class="ai-signal-row"><span>Pattern</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_pat" style="width:0%"></div></div><span id="ai_sig_pat_pct">0%</span></div>
-          <div class="ai-signal-row"><span>Momentum</span><div class="ai-bar-bg"><div class="ai-bar-fill" id="ai_sig_mom" style="width:0%"></div></div><span id="ai_sig_mom_pct">0%</span></div>
-        </div>
-        <!-- Right: live log -->
-        <div class="ai-right">
-          <div class="ai-section-title">Live Trade Log</div>
-          <div class="ai-log" id="ai-log"></div>
-        </div>
-      </div>
-    </div>
-  </section>
 </body>
 </html>
