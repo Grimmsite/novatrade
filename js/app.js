@@ -1843,6 +1843,8 @@ function brunHandleMsg(msg) {
   if (msg.msg_type==='proposal_open_contract' && msg.proposal_open_contract) {
     var poc = msg.proposal_open_contract;
     if (!poc.is_sold) return;
+    var execMs = Date.now() - (ai._tradeStart||Date.now());
+    aiLog('⚡ Execution: '+execMs+'ms total','info');
     var won    = poc.profit > 0;
     var profit = parseFloat(poc.profit)||0;
     var stake  = parseFloat(poc.buy_price)||brun.stake;
@@ -2117,6 +2119,7 @@ async function aiTradeLoop() {
   ai.currentCt     = pick.sig.ct;
   var mEl = document.getElementById('ai_market_display');
   if (mEl) mEl.textContent = pick.sym + ' — ' + pick.sig.ct + ' (' + Math.round(pick.sig.score) + '% score)';
+  ai._tradeStart = Date.now();
   aiLog('Signal: '+pick.sym+' | '+pick.sig.ct+(pick.sig.barrier!=null?' barrier:'+pick.sig.barrier:'')+' | conf:'+Math.round(pick.sig.confidence)+'%','info');
 
   try {
