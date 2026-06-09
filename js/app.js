@@ -1329,7 +1329,6 @@ function showAccountMenu() {
   openModal('accountModal');
 }
 
-function showAccountModal() { renderAccountSwitcher(); openModal('accountModal'); fetchAndShowBalance(); }
 function fetchAndShowBalance() {
   if (!state.apiToken) return;
   const ws = createWS(
