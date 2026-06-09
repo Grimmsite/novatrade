@@ -1559,17 +1559,12 @@ function brunOnTradeTypeChange() {
   var br = document.getElementById('brun_barrier_row');
   if (!ct) return;
   var opts = {
-    evenodd:    [['DIGITEVEN','Even'],['DIGITODD','Odd']],
-    overunder:  [['DIGITOVER','Over'],['DIGITUNDER','Under']],
-    risefall:   [['CALL','Rise (CALL)'],['PUT','Fall (PUT)']],
-    matchdiff:  [['DIGITMATCH','Matches'],['DIGITDIFF','Differs']],
-    higherlower:[['CALL','Higher'],['PUT','Lower']]
+    evenodd: [['DIGITEVEN','Even'],['DIGITODD','Odd']],
+    overunder: [['DIGITOVER','Over'],['DIGITUNDER','Under']],
+    risefall: [['CALL','Rise (CALL)'],['PUT','Fall (PUT)']],
+    matchdiff: [['DIGITMATCH','Matches'],['DIGITDIFF','Differs']],
+    higherlower: [['CALL','Higher'],['PUT','Lower']]
   };
-  ct.innerHTML = (opts[tt]||[]).map(function(o){
-    return '<option value="'+o[0]+'">'+o[1]+'</option>';
-  }).join('');
-  brunToggleBarrier();
-};
   ct.innerHTML = (opts[tt]||[]).map(function(o){ return '<option value="'+o[0]+'">'+o[1]+'</option>'; }).join('');
   brunToggleBarrier();
 }
@@ -1620,18 +1615,6 @@ function brunToggleBarrier() {
 }
 
 function brunPopulateSettings(bot) {
-  // Sync trade type dropdown from contract type
-  var ctToTT = {
-    'DIGITEVEN':'evenodd','DIGITODD':'evenodd',
-    'DIGITOVER':'overunder','DIGITUNDER':'overunder',
-    'CALL':'risefall','PUT':'risefall',
-    'DIGITMATCH':'matchdiff','DIGITDIFF':'matchdiff'
-  };
-  var ttEl = document.getElementById('brun_trade_type');
-  if (ttEl && bot.cfg.ct) {
-    ttEl.value = ctToTT[bot.cfg.ct] || 'risefall';
-    brunOnTradeTypeChange();
-  }
   var cfg = bot.cfg;
   var sym  = document.getElementById('brun_symbol');
   var ct   = document.getElementById('brun_ct');
