@@ -231,10 +231,6 @@ function updateUserBadge(user) {
   var signupBtn = document.querySelector(".btn-signup");
   if (loginBtn) loginBtn.style.display = "none";
   if (signupBtn) signupBtn.style.display = "none";
-  var sb = document.getElementById("switcherBtn");
-  var ab = document.getElementById("apiTokenBtn");
-  if (sb) sb.style.display = "";
-  if (ab) ab.style.display = "none";
   fetchBalance();
   showToast("Connected as " + (user.fullname || user.loginid));
 }
