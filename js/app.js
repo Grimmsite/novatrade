@@ -186,6 +186,10 @@ async function authorizeToken(bearerToken) {
     const accountId = account.account_id;
 
     state.accountId = accountId;
+    state.allAccounts = accounts;
+    localStorage.setItem("nt_accounts", JSON.stringify(accounts));
+    state.allAccounts = accounts;
+    localStorage.setItem("nt_accounts", JSON.stringify(accounts));
     state.bearerToken = bearerToken;
     state.currency = account.currency || 'USD';
     localStorage.setItem('nt_token', bearerToken);
@@ -218,6 +222,63 @@ async function authorizeToken(bearerToken) {
     localStorage.removeItem('nt_account_id');
     state.apiToken = null;
   }
+}
+
+async function switchAccount(accountId) {
+  state.accountId = accountId;
+  localStorage.setItem('nt_account_id', accountId);
+  await fetchBalance();
+  const acct = (state.allAccounts || []).find(a => a.account_id === accountId) || {};
+  state.currency = acct.currency || state.currency;
+  document.getElementById('accountId').textContent = accountId;
+  document.getElementById('accountName').textContent = acct.is_virtual ? 'Demo Account' : 'Real Account';
+  renderAccountSwitcher();
+  showToast('Switched to ' + accountId);
+}
+
+function renderAccountSwitcher() {
+  var el = document.getElementById('accountSwitcher');
+  var accounts = state.allAccounts || JSON.parse(localStorage.getItem('nt_accounts') || '[]');
+  if (accounts.length <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="font-size:12px;color:#aaa;margin-bottom:6px">Switch Account</div>' +
+    accounts.map(function(a) {
+      var active = a.account_id === state.accountId;
+      var label = (a.is_virtual ? 'Demo' : 'Real') + ' — ' + a.account_id + ' (' + (a.currency || '') + ')';
+      return '<button onclick="switchAccount('' + a.account_id + '')" style="display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border-radius:6px;border:1px solid ' + (active ? '#f0c040' : '#444') + ';background:' + (active ? '#2a2200' : '#1a1a1a') + ';color:#fff;cursor:pointer">' + label + (active ? ' ✓' : '') + '</button>';
+    }).join('');
+}
+
+async function switchAccount(accountId) {
+  if (!state.bearerToken) return;
+  state.accountId = accountId;
+  localStorage.setItem('nt_account_id', accountId);
+  await fetchBalance();
+  var accounts = state.allAccounts || [];
+  var acct = accounts.find(function(a) { return a.account_id === accountId; }) || {};
+  state.currency = acct.currency || state.currency;
+  document.getElementById('accountId').textContent = accountId;
+  document.getElementById('accountName').textContent = acct.is_virtual ? 'Demo Account' : 'Real Account';
+  renderAccountSwitcher();
+  showToast('Switched to ' + accountId);
+}
+
+function renderAccountSwitcher() {
+  var el = document.getElementById('accountSwitcher');
+  if (!el) return;
+  var accounts = state.allAccounts || JSON.parse(localStorage.getItem('nt_accounts') || '[]');
+  if (accounts.length <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="font-size:12px;color:#aaa;margin-bottom:6px">Switch Account</div>' +
+    accounts.map(function(a) {
+      var active = a.account_id === state.accountId;
+      var label = (a.is_virtual ? 'Demo' : 'Real') + ' — ' + a.account_id + ' (' + (a.currency || '') + ')';
+      return '<button onclick="switchAccount('' + a.account_id + '')" style="display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border-radius:6px;border:1px solid ' + (active ? '#f0c040' : '#444') + ';background:' + (active ? '#2a2200' : '#1a1a1a') + ';color:#fff;cursor:pointer">' + label + (active ? ' ✓' : '') + '</button>';
+    }).join('');
+}
+
+function showAccountModal() {
+  renderAccountSwitcher();
+  openModal('accountModal');
+  fetchAndShowBalance();
 }
 
 function updateUserBadge(user) {
@@ -1268,6 +1329,7 @@ function showAccountMenu() {
   openModal('accountModal');
 }
 
+function showAccountModal() { renderAccountSwitcher(); openModal('accountModal'); fetchAndShowBalance(); }
 function fetchAndShowBalance() {
   if (!state.apiToken) return;
   const ws = createWS(
