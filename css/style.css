@@ -2609,7 +2609,7 @@ body {
 ═══════════════════════════════════════ */
 .brun-wrap{display:flex;height:calc(100vh - 120px);overflow:hidden}
 .brun-left{width:230px;min-width:230px;background:#111;border-right:1px solid #222;overflow-y:auto;display:flex;flex-direction:column;padding-bottom:16px}
-.brun-right{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.brun-right{flex:1;display:flex;flex-direction:column;overflow-y:auto}
 .brun-panel-hdr{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;padding:14px 14px 8px}
 .brun-divider{height:1px;background:#222;margin:8px 0}
 .brun-card{display:flex;align-items:center;gap:7px;padding:6px 10px;cursor:pointer;border-left:3px solid transparent;transition:background 0.15s}
@@ -2627,7 +2627,7 @@ body {
 .brun-setting input:focus{outline:none;border-color:#f0c040}
 .brun-upload-btn{display:block;margin:8px 12px 0;padding:9px 14px;background:#1a1a1a;border:1px dashed #444;border-radius:8px;color:#aaa;font-size:12px;text-align:center;cursor:pointer;transition:all 0.2s}
 .brun-upload-btn:hover{background:#222;border-color:#f0c040;color:#f0c040}
-.brun-main{flex:1;display:flex;flex-direction:column;background:#0d0d0d;overflow:hidden}
+.brun-main{flex:1;display:flex;flex-direction:column;background:#0d0d0d;overflow:visible}
 .brun-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #222;background:#111}
 .brun-active-name{font-size:15px;font-weight:700;color:#fff}
 .brun-controls{display:flex;gap:10px}
@@ -2660,7 +2660,7 @@ body {
   .brun-log-row{grid-template-columns:60px 100px 60px 55px 75px;font-size:11px;padding:6px 10px}
 }
 
-.brun-settings-panel{border-top:1px solid #222;background:#0f0f0f;padding:14px 18px}
+.brun-settings-panel{border-top:1px solid #222;background:#0f0f0f;padding:14px 18px;overflow-y:auto}
 .brun-settings-title{font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
 .brun-settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
 .brun-sf{display:flex;flex-direction:column;gap:4px}
