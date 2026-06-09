@@ -1570,6 +1570,36 @@ function brunPopulateSettings(bot) {
   brunToggleBarrier();
 }
 
+
+function brunOpenModal() {
+  var list = document.getElementById('brun-modal-list');
+  var modal = document.getElementById('brun-modal');
+  if (!list || !modal) return;
+  list.innerHTML = BRUN_BOTS.map(function(b) {
+    var rc = b.risk==='LOW'?'#4caf50':b.risk==='MEDIUM'?'#f0c040':'#f44336';
+    var active = brun.bot && brun.bot.id === b.id ? ' brun-mcard-active' : '';
+    return '<div class="brun-mcard'+active+'" onclick="brunPickBot(''+b.id+'')">'
+      +'<span class="brun-mcard-icon">'+b.icon+'</span>'
+      +'<div class="brun-mcard-info">'
+      +'<div class="brun-mcard-name">'+b.name+'</div>'
+      +'<div class="brun-mcard-desc">'+b.desc+'</div>'
+      +'</div>'
+      +'<span class="brun-badge" style="color:'+rc+';border-color:'+rc+'">'+b.risk+'</span>'
+      +'</div>';
+  }).join('');
+  modal.style.display = 'flex';
+}
+
+function brunCloseModal(e) {
+  if (e && e.target !== document.getElementById('brun-modal')) return;
+  document.getElementById('brun-modal').style.display = 'none';
+}
+
+function brunPickBot(id) {
+  document.getElementById('brun-modal').style.display = 'none';
+  brunSelect(id);
+}
+
 function brunRender() {
   var el = document.getElementById('brun-library');
   if (!el) return;
