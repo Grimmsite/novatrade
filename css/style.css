@@ -2779,8 +2779,6 @@ body {
 
 
 
-/* ── FULL VIEWPORT LAYOUT FIX ───────────────────────── */
-html { height: 100%; }
 body { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 .navbar { flex-shrink: 0; }
 .risk-banner { flex-shrink: 0; }
@@ -2804,5 +2802,67 @@ body { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
   .ai-scalper-body { flex-direction: column; overflow-y: auto; }
   .ai-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid #1a1a1a; overflow-y: visible; }
   .ai-right { flex: 1; min-height: 300px; }
+  .ai-log { min-height: 250px; }
+}
+
+/* ── AI SCALPER VIEWPORT FIX (final) ────────────────── */
+/* navbar + risk-banner are fixed/sticky, so #appContainer
+   already has margin-top to clear them. We just need it
+   to fill the remaining height without overflow. */
+#appContainer {
+  height: calc(100vh - var(--navbar-h) - 37px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* remove any min-height that was fighting this */
+  min-height: unset;
+}
+.page { display: none; }
+.page.active {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* pages that need normal scroll stay scrollable */
+#page-dashboard.page.active,
+#page-bot-builder.page.active,
+#page-analysis.page.active {
+  overflow-y: auto;
+}
+/* AI Scalper fills exactly */
+.ai-scalper-wrap {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden; background: #0a0a0a;
+}
+.ai-scalper-header { flex-shrink: 0; }
+.ai-scalper-body {
+  flex: 1; min-height: 0;
+  display: flex; overflow: hidden;
+}
+.ai-left {
+  width: 280px; min-width: 280px; flex-shrink: 0;
+  overflow-y: auto; padding: 16px;
+  border-right: 1px solid #1a1a1a; background: #0d0d0d;
+}
+.ai-right {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  padding: 16px; overflow: hidden;
+}
+.ai-log { flex: 1; min-height: 0; overflow-y: auto; }
+/* Mobile: stack panels, allow scroll */
+@media (max-width: 768px) {
+  #appContainer {
+    height: calc(100vh - var(--navbar-h) - 37px);
+    overflow-y: auto;
+  }
+  .page.active { overflow: visible; flex: unset; }
+  .ai-scalper-wrap { min-height: calc(100vh - var(--navbar-h) - 37px); }
+  .ai-scalper-body { flex-direction: column; overflow: visible; min-height: unset; }
+  .ai-left { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid #1a1a1a; overflow-y: visible; }
+  .ai-right { min-height: 350px; }
   .ai-log { min-height: 250px; }
 }
