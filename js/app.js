@@ -1797,7 +1797,7 @@ function brunNextTrade() {
   var cfg = brun.bot.cfg;
   var proposal = { proposal:1, amount:parseFloat(brun.stake.toFixed(2)), basis:'stake',
     contract_type:cfg.ct, currency:state.currency||'USD',
-    duration:cfg.dur, duration_unit:cfg.dur_unit, symbol:cfg.symbol };
+    duration:cfg.dur, duration_unit:cfg.dur_unit, underlying_symbol:cfg.symbol };
   if (cfg.barrier !== null && cfg.barrier !== undefined) proposal.barrier = cfg.barrier;
   brunSetStatus('running','Trade #'+(brun.trades+1)+' — stake $'+brun.stake.toFixed(2));
   brun.ws.send(JSON.stringify(proposal));
