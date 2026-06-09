@@ -236,7 +236,7 @@ body {
 }
 
 .page { display: none; }
-.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.page.active { display: flex !important; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 
 /* ═══════════════════════════════════════
    DASHBOARD
@@ -2789,8 +2789,8 @@ body {
 .ai-log { flex: 1; min-height: 0; overflow-y: auto; }
 
 @media (max-width: 768px) {
-  #appContainer { height: auto !important; min-height: calc(100vh - var(--navbar-h) - var(--banner-h)); overflow-y: auto !important; display: block !important; }
-  .page.active { display: block !important; overflow: visible !important; min-height: unset !important; flex: unset !important; }
+  #appContainer { height: auto !important; min-height: calc(100vh - var(--navbar-h) - var(--banner-h)); overflow-y: auto !important; }
+  .page.active { display: flex !important; flex-direction: column; overflow-y: auto !important; min-height: unset !important; flex: 1 !important; }
   #page-ai-scalper.page.active { overflow: visible !important; }
   .ai-scalper-wrap { overflow: visible !important; display: block !important; min-height: unset; }
   .ai-scalper-body { display: block !important; overflow: visible !important; height: auto; }
