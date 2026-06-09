@@ -248,6 +248,8 @@ function updateUserBadge(user) {
   updateDbotFrame();
   fetchBalance();
   showToast("Connected as " + (user.fullname || user.loginid));
+  // Begin market scanning in background
+  aiScanMarkets();
 }
 
 async function fetchBalance() {
@@ -2081,8 +2083,7 @@ async function aiStart() {
   document.getElementById('ai-log').innerHTML='';
   aiUpdateStats();
   aiSetStatus('scanning','Starting market scan...');
-  aiLog('AI Scalper started — scanning markets','info');
-  aiScanMarkets();
+  aiLog('AI Scalper started — trading','info');
   // Wait for data to accumulate
   setTimeout(function(){ if (ai.running) aiTradeLoop(); }, 4000);
 }
