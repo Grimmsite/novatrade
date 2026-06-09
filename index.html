@@ -31,7 +31,7 @@
     <button class="nav-tab" data-page="speedbot" onclick="navigate('speedbot')"><span class="nav-icon">🚀</span> Speedbot</button>
   </nav>
   <div class="nav-right">
-    <button class="btn-secondary" onclick="showApiModal()">API Token</button>
+    <button class="btn-secondary" onclick="showAccountMenu()" id="switcherBtn" style="display:none">Switch Account</button><button class="btn-secondary" onclick="showApiModal()" id="apiTokenBtn">API Token</button>
     <button class="btn-login" onclick="showLoginModal()">Log In</button>
     <button class="btn-signup" onclick="showSignupModal()">Sign Up</button>
     <div class="user-badge hidden" id="userBadge" onclick="showAccountMenu()">
