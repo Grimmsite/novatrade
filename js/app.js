@@ -1633,6 +1633,13 @@ function brunPopulateSettings(bot) {
   if (duru) duru.value = cfg.dur_unit  || 't';
   if (barr) barr.value = cfg.barrier !== null && cfg.barrier !== undefined ? cfg.barrier : 4;
   if (mult) mult.value = cfg.multiplier|| 2.1;
+  if (stk)  stk.value  = cfg.initStake  || 1;
+  // If symbol not yet in dropdown, add it as a fallback option
+  if (sym && cfg.symbol) {
+    var found = Array.from(sym.options).some(function(o){ return o.value === cfg.symbol; });
+    if (!found) { var o = document.createElement('option'); o.value = cfg.symbol; o.textContent = cfg.symbol+' (from bot)'; sym.appendChild(o); }
+    sym.value = cfg.symbol;
+  }
   brunToggleBarrier();
 }
 
