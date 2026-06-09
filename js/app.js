@@ -235,7 +235,6 @@ function updateUserBadge(user) {
 }
 
 async function fetchBalance() {
-  if (!state.bearerToken || !state.accountId) return;
   try {
     const wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
     const ws = createWS(
@@ -243,14 +242,21 @@ async function fetchBalance() {
       (msg) => {
         if (msg.balance) {
           const bal = msg.balance.balance.toFixed(2) + ' ' + msg.balance.currency;
-          const el = document.getElementById('autoBalance');
-          if (el) el.textContent = bal;
+          const short = msg.balance.balance.toFixed(2);
+          const el1 = document.getElementById('autoBalance');
+          const el2 = document.getElementById('heroBalance');
+          const el3 = document.getElementById('accountBalance');
+          if (el1) el1.textContent = bal;
+          if (el2) el2.textContent = bal;
+          if (el3) el3.textContent = 'Balance: ' + bal;
+          state.balance = msg.balance.balance;
+          state.currency = msg.balance.currency;
           ws.close();
         }
       },
       null, null, wsUrl
     );
-  } catch(e) {}
+  } catch(e) { console.error('fetchBalance error:', e); }
 }
 
 // ═══════════════════════════════════════════
