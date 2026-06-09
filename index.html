@@ -101,56 +101,48 @@
     </div>
   </section>
   <section id="page-bot-builder" class="page">
-    <div class="bot-builder-layout">
-      <div class="builder-sidebar">
-        <button class="sidebar-btn" title="Refresh" onclick="refreshBuilder()">↺</button>
-        <button class="sidebar-btn" title="Load XML" onclick="loadXMLFile()">📁</button>
-        <button class="sidebar-btn" title="Save" onclick="saveBot()">💾</button>
-        <button class="sidebar-btn" title="Blocks List" onclick="toggleBlocksList()">☰</button>
-        <div class="sidebar-divider"></div>
-        <button class="sidebar-btn" title="Chart" onclick="showChart()">📈</button>
-        <button class="sidebar-btn" title="Summary" onclick="showSummary()">📋</button>
-        <button class="sidebar-btn" title="Transactions" onclick="showTransactions()">🎯</button>
-        <div class="sidebar-divider"></div>
-        <button class="sidebar-btn" title="Trade History" onclick="showHistory()">📉</button>
-        <div class="sidebar-divider"></div>
-        <button class="sidebar-btn" title="Undo" onclick="undoAction()">↩</button>
-        <button class="sidebar-btn" title="Redo" onclick="redoAction()">↪</button>
-        <div class="sidebar-divider"></div>
-        <button class="sidebar-btn" title="Zoom In" onclick="zoomIn()">🔍</button>
-        <button class="sidebar-btn" title="Zoom Out" onclick="zoomOut()">🔎</button>
+    <div class="brun-layout">
+      <div class="brun-sidebar">
+        <div class="brun-panel-hdr">🤖 Bot Library</div>
+        <div id="brun-library"></div>
+        <div class="brun-divider"></div>
+        <div class="brun-panel-hdr">⚙️ Settings</div>
+        <div class="brun-settings">
+          <div class="brun-setting"><label>Initial Stake ($)</label><input type="number" id="brun_stake" value="1" min="0.35" step="0.01"/></div>
+          <div class="brun-setting"><label>Take Profit ($)</label><input type="number" id="brun_tp" value="10" min="0" step="0.5"/></div>
+          <div class="brun-setting"><label>Stop Loss ($)</label><input type="number" id="brun_sl" value="10" min="0" step="0.5"/></div>
+          <div class="brun-setting"><label>Max Trades</label><input type="number" id="brun_max" value="100" min="1" step="1"/></div>
+        </div>
+        <div class="brun-divider"></div>
+        <div class="brun-panel-hdr">📂 Custom Bot</div>
+        <label class="brun-upload-btn"><input type="file" id="brun_xml" accept=".xml" style="display:none" onchange="brunLoadXML(event)"/>Upload XML Bot</label>
       </div>
-      <div class="builder-main">
-        <div class="builder-toolbar">
-          <div class="toolbar-left">
-            <button class="blocks-menu-btn" onclick="toggleBlocksMenu()">Blocks Menu <span>▼</span></button>
-            <button class="quick-strategy-btn" onclick="showQuickStrategy()">Quick strategy</button>
-          </div>
-          <div class="toolbar-right">
-            <label class="xml-upload-label">
-              <input type="file" id="xmlFileInput" accept=".xml" onchange="handleXMLUpload(event)" style="display:none"/>
-              📂 Import XML
-            </label>
-            <button class="export-btn" onclick="exportXML()">💾 Export XML</button>
+      <div class="brun-main">
+        <div class="brun-topbar">
+          <div id="brun-active-name" class="brun-active-name">No bot selected</div>
+          <div class="brun-controls">
+            <button id="brunRunBtn" class="brun-run-btn" onclick="brunStart()" disabled>▶ Run</button>
+            <button id="brunStopBtn" class="brun-stop-btn" style="display:none" onclick="brunStop()">■ Stop</button>
           </div>
         </div>
-        <div class="dbot-container">
-          <iframe id="dbotFrame" src="https://bot.deriv.com" title="NovaTrade Bot Builder"
-            allow="clipboard-read; clipboard-write"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads">
-          </iframe>
+        <div class="brun-stats">
+          <div class="brun-stat"><span class="brun-stat-lbl">Trades</span><span class="brun-stat-val" id="brun_trades">0</span></div>
+          <div class="brun-stat"><span class="brun-stat-lbl">Wins</span><span class="brun-stat-val" id="brun_wins" style="color:#4caf50">0</span></div>
+          <div class="brun-stat"><span class="brun-stat-lbl">Losses</span><span class="brun-stat-val" id="brun_losses" style="color:#f44336">0</span></div>
+          <div class="brun-stat"><span class="brun-stat-lbl">Stake</span><span class="brun-stat-val" id="brun_cur_stake">—</span></div>
+          <div class="brun-stat"><span class="brun-stat-lbl">P&amp;L</span><span class="brun-stat-val" id="brun_pnl">$0.00</span></div>
         </div>
-      </div>
-    </div>
-    <div class="run-bar">
-      <button class="run-btn" onclick="toggleBot()"><span class="run-icon">▶</span> Run</button>
-      <div class="execution-info">
-        <span class="exec-label">Execution</span>
-        <span class="exec-speed" onclick="toggleExecSpeed()">SLOW</span>
+        <div class="brun-statusbar">
+          <span id="brun-dot" class="brun-dot idle"></span>
+          <span id="brun-status">Select a bot and press Run</span>
+        </div>
+        <div class="brun-log" id="brun-log">
+          <div class="brun-log-empty">Trade log will appear here when bot is running...</div>
+        </div>
       </div>
     </div>
   </section>
-  <section id="page-analysis" class="page">
+    <section id="page-analysis" class="page">
     <div class="analysis-tabs">
       <button class="atab active" id="atab-dcircle" onclick="switchAnalysisTab('dcircle')">DCIRCLE</button>
       <button class="atab" id="atab-tool" onclick="switchAnalysisTab('tool')">AnalysisTool</button>

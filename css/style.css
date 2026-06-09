@@ -2603,3 +2603,58 @@ body {
 @media (max-width: 640px) {
   .atool-top-row, .atool-guide-row { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════
+   NATIVE BOT RUNNER
+═══════════════════════════════════════ */
+.brun-layout{display:flex;height:calc(100vh - 120px);overflow:hidden}
+.brun-sidebar{width:255px;min-width:255px;background:#111;border-right:1px solid #222;overflow-y:auto;display:flex;flex-direction:column;padding-bottom:16px}
+.brun-panel-hdr{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;padding:14px 14px 8px}
+.brun-divider{height:1px;background:#222;margin:8px 0}
+.brun-card{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-left:3px solid transparent;transition:background 0.15s}
+.brun-card:hover{background:#1a1a1a}
+.brun-card-active{background:#1a1a00;border-left-color:#f0c040}
+.brun-card-icon{font-size:20px;flex-shrink:0}
+.brun-card-info{flex:1;min-width:0}
+.brun-card-name{font-size:13px;font-weight:600;color:#fff}
+.brun-card-desc{font-size:10px;color:#666;margin-top:2px;line-height:1.3}
+.brun-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;border:1px solid;flex-shrink:0}
+.brun-settings{padding:0 12px;display:flex;flex-direction:column;gap:8px}
+.brun-setting{display:flex;flex-direction:column;gap:3px}
+.brun-setting label{font-size:11px;color:#888}
+.brun-setting input{background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#fff;padding:6px 10px;font-size:13px;width:100%;box-sizing:border-box}
+.brun-setting input:focus{outline:none;border-color:#f0c040}
+.brun-upload-btn{display:block;margin:8px 12px 0;padding:9px 14px;background:#1a1a1a;border:1px dashed #444;border-radius:8px;color:#aaa;font-size:12px;text-align:center;cursor:pointer;transition:all 0.2s}
+.brun-upload-btn:hover{background:#222;border-color:#f0c040;color:#f0c040}
+.brun-main{flex:1;display:flex;flex-direction:column;background:#0d0d0d;overflow:hidden}
+.brun-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #222;background:#111}
+.brun-active-name{font-size:15px;font-weight:700;color:#fff}
+.brun-controls{display:flex;gap:10px}
+.brun-run-btn{background:#f0c040;color:#000;border:none;padding:8px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity 0.2s}
+.brun-run-btn:disabled{opacity:0.4;cursor:not-allowed}
+.brun-run-btn:not(:disabled):hover{opacity:0.85}
+.brun-stop-btn{background:#f44336;color:#fff;border:none;padding:8px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+.brun-stop-btn:hover{opacity:0.85}
+.brun-stats{display:flex;border-bottom:1px solid #1a1a1a}
+.brun-stat{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 8px;border-right:1px solid #1a1a1a}
+.brun-stat:last-child{border-right:none}
+.brun-stat-lbl{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:0.5px}
+.brun-stat-val{font-size:16px;font-weight:700;color:#fff;margin-top:2px}
+.brun-statusbar{display:flex;align-items:center;gap:8px;padding:8px 18px;background:#0f0f0f;border-bottom:1px solid #1a1a1a;font-size:12px;color:#888}
+.brun-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.brun-dot.idle{background:#555}
+.brun-dot.running{background:#4caf50;animation:brun-pulse 1s infinite}
+.brun-dot.error{background:#f44336}
+@keyframes brun-pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.brun-log{flex:1;overflow-y:auto;padding:8px 0}
+.brun-log-empty{text-align:center;color:#333;font-size:13px;padding:40px 20px}
+.brun-log-row{display:grid;grid-template-columns:80px 130px 80px 70px 90px;gap:8px;padding:7px 18px;font-size:12px;border-bottom:1px solid #111;align-items:center}
+.brun-log-row:hover{background:#111}
+.brun-log-time{color:#555}
+.brun-log-ct{color:#aaa;font-weight:600}
+.brun-log-stake{color:#fff}
+@media(max-width:600px){
+  .brun-layout{flex-direction:column;height:auto}
+  .brun-sidebar{width:100%;min-width:unset;border-right:none;border-bottom:1px solid #222;max-height:280px}
+  .brun-log-row{grid-template-columns:60px 100px 60px 55px 75px;font-size:11px;padding:6px 10px}
+}

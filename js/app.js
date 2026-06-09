@@ -1523,3 +1523,200 @@ function updateDbotFrame() {
     + '&cur1=' + encodeURIComponent(currency);
   frame.src = url;
 }
+
+// ═══════════════════════════════════════════
+// NATIVE BOT RUNNER
+// ═══════════════════════════════════════════
+
+var BRUN_BOTS = [
+  { id:'rise_fall_pro',    name:'Rise Fall Pro',      desc:'Martingale CALL — R_50, 3 ticks',              risk:'MEDIUM', icon:'📈', cfg:{ symbol:'R_50',  ct:'CALL',       barrier:null, dur:3, dur_unit:'t', multiplier:2.1  } },
+  { id:'even_odd_master',  name:'Even Odd Master',    desc:'Martingale DIGITEVEN — R_100, 1 tick',         risk:'MEDIUM', icon:'🎯', cfg:{ symbol:'R_100', ct:'DIGITEVEN',  barrier:null, dur:1, dur_unit:'t', multiplier:2.15 } },
+  { id:'over_under_elite', name:'Over Under Elite',   desc:'Martingale DIGITOVER barrier 4 — R_100, 1 tick',risk:'HIGH',  icon:'⚡', cfg:{ symbol:'R_100', ct:'DIGITOVER',  barrier:4,    dur:1, dur_unit:'t', multiplier:2.3  } },
+  { id:'sniper',           name:'Sniper',             desc:'Martingale DIGITOVER barrier 4 x2.2 — R_100',  risk:'HIGH',  icon:'🎯', cfg:{ symbol:'R_100', ct:'DIGITOVER',  barrier:4,    dur:1, dur_unit:'t', multiplier:2.2  } },
+  { id:'volatility_hunter',name:'Volatility Hunter',  desc:'CALL on R_75, 5 ticks, base stake 2',          risk:'LOW',   icon:'🔥', cfg:{ symbol:'R_75',  ct:'CALL',       barrier:null, dur:5, dur_unit:'t', multiplier:2.1  } }
+];
+
+var brun = {
+  running:false, stopped:false, bot:null,
+  stake:1, initStake:1, tp:10, sl:10, maxTrades:100,
+  pnl:0, trades:0, wins:0, losses:0,
+  ws:null
+};
+
+function brunRender() {
+  var el = document.getElementById('brun-library');
+  if (!el) return;
+  el.innerHTML = BRUN_BOTS.map(function(b) {
+    var rc = b.risk==='LOW'?'#4caf50':b.risk==='MEDIUM'?'#f0c040':'#f44336';
+    var active = brun.bot && brun.bot.id === b.id ? ' brun-card-active' : '';
+    return '<div class="brun-card'+active+'" onclick="brunSelect(\''+b.id+'\')">'
+      +'<span class="brun-card-icon">'+b.icon+'</span>'
+      +'<div class="brun-card-info"><div class="brun-card-name">'+b.name+'</div>'
+      +'<div class="brun-card-desc">'+b.desc+'</div></div>'
+      +'<span class="brun-badge" style="color:'+rc+';border-color:'+rc+'">'+b.risk+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+function brunSelect(id) {
+  if (brun.running) return;
+  brun.bot = BRUN_BOTS.find(function(b){ return b.id===id; }) || null;
+  brunRender();
+  var nm = document.getElementById('brun-active-name');
+  var rb = document.getElementById('brunRunBtn');
+  if (nm) nm.textContent = brun.bot ? brun.bot.name : 'No bot selected';
+  if (rb) rb.disabled = !brun.bot || !state.bearerToken;
+  brunSetStatus('idle', brun.bot ? 'Ready — press Run to start' : 'Select a bot and press Run');
+}
+
+function brunLoadXML(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var cfg = brunParseXML(e.target.result);
+    if (!cfg) { showToast('Could not parse XML bot'); return; }
+    var b = { id:'custom_'+Date.now(), name:file.name.replace('.xml',''), desc:'Custom uploaded bot', risk:'MEDIUM', icon:'📂', cfg:cfg };
+    BRUN_BOTS.push(b);
+    brunRender();
+    brunSelect(b.id);
+    showToast('Bot loaded: '+b.name);
+  };
+  reader.readAsText(file);
+}
+
+function brunParseXML(xmlStr) {
+  try {
+    var doc = new DOMParser().parseFromString(xmlStr, 'text/xml');
+    var mkt = doc.querySelector('block[type="trade_definition_market"]');
+    var symbol = mkt ? ((mkt.querySelector('field[name="SYMBOL_LIST"]')||mkt.querySelector('field[name="SYMBOL"]')||{}).textContent||'R_100') : 'R_100';
+    var opts = doc.querySelector('block[type="trade_definition_tradeoptions"]');
+    var dur = opts ? parseInt((opts.querySelector('field[name="DURATION_VALUE"]')||{}).textContent||'1') : 1;
+    var dur_unit = opts ? ((opts.querySelector('field[name="DURATION_UNIT"]')||{}).textContent||'t') : 't';
+    var purch = doc.querySelector('block[type="purchase"]');
+    var ct = purch ? ((purch.querySelector('field[name="PURCHASE_LIST"]')||{}).textContent||'CALL') : 'CALL';
+    var barrier = null;
+    if (purch) { var bv = purch.querySelector('value[name="BARRIEROFFSET"] field[name="NUM"], value[name="BARRIER"] field[name="NUM"]'); if (bv) barrier = parseFloat(bv.textContent); }
+    var initStake = 1;
+    var bp = doc.querySelector('statement[name="BEFORE_PURCHASE_STATEMENT"]');
+    if (bp) { var nums = bp.querySelectorAll('field[name="NUM"]'); if (nums.length) initStake = parseFloat(nums[0].textContent)||1; }
+    var multiplier = 2.0;
+    var ap = doc.querySelector('statement[name="AFTER_PURCHASE_STATEMENT"]');
+    if (ap) { var mn = ap.querySelectorAll('block[type="math_arithmetic"] field[name="NUM"]'); if (mn.length) multiplier = parseFloat(mn[0].textContent)||2.0; }
+    return { symbol:symbol, ct:ct, barrier:barrier, dur:dur, dur_unit:dur_unit, multiplier:multiplier, initStake:initStake };
+  } catch(e) { console.error('XML parse error',e); return null; }
+}
+
+function brunSetStatus(type, text) {
+  var dot = document.getElementById('brun-dot');
+  var txt = document.getElementById('brun-status');
+  if (dot) dot.className = 'brun-dot '+type;
+  if (txt) txt.textContent = text;
+}
+
+function brunUpdateStats() {
+  var pnlEl = document.getElementById('brun_pnl');
+  if (document.getElementById('brun_trades'))    document.getElementById('brun_trades').textContent    = brun.trades;
+  if (document.getElementById('brun_wins'))      document.getElementById('brun_wins').textContent      = brun.wins;
+  if (document.getElementById('brun_losses'))    document.getElementById('brun_losses').textContent    = brun.losses;
+  if (document.getElementById('brun_cur_stake')) document.getElementById('brun_cur_stake').textContent = '$'+brun.stake.toFixed(2);
+  if (pnlEl) { pnlEl.textContent=(brun.pnl>=0?'+':'')+'$'+brun.pnl.toFixed(2); pnlEl.style.color=brun.pnl>=0?'#4caf50':'#f44336'; }
+}
+
+function brunAddLog(entry) {
+  var log = document.getElementById('brun-log');
+  if (!log) return;
+  var ph = log.querySelector('.brun-log-empty');
+  if (ph) ph.remove();
+  var c = entry.won ? '#4caf50' : '#f44336';
+  var row = document.createElement('div');
+  row.className = 'brun-log-row';
+  row.innerHTML = '<span class="brun-log-time">'+new Date().toLocaleTimeString()+'</span>'
+    +'<span class="brun-log-ct">'+entry.ct+'</span>'
+    +'<span class="brun-log-stake">$'+entry.stake.toFixed(2)+'</span>'
+    +'<span style="color:'+c+';font-weight:700">'+(entry.won?'WIN':'LOSS')+'</span>'
+    +'<span style="color:'+c+';font-weight:700">'+(entry.profit>=0?'+':'')+'$'+entry.profit.toFixed(2)+'</span>';
+  log.insertBefore(row, log.firstChild);
+  while (log.children.length > 60) log.removeChild(log.lastChild);
+}
+
+async function brunStart() {
+  if (!state.bearerToken || !state.accountId) { showToast('Please log in first'); return; }
+  if (!brun.bot) { showToast('Select a bot first'); return; }
+  if (brun.running) return;
+  brun.initStake = parseFloat(document.getElementById('brun_stake').value)||1;
+  brun.stake     = brun.initStake;
+  brun.tp        = parseFloat(document.getElementById('brun_tp').value)||10;
+  brun.sl        = parseFloat(document.getElementById('brun_sl').value)||10;
+  brun.maxTrades = parseInt(document.getElementById('brun_max').value)||100;
+  brun.pnl=0; brun.trades=0; brun.wins=0; brun.losses=0;
+  brun.stopped=false; brun.running=true;
+  document.getElementById('brunRunBtn').style.display='none';
+  document.getElementById('brunStopBtn').style.display='';
+  document.getElementById('brun-log').innerHTML='';
+  brunUpdateStats();
+  brunSetStatus('running','Connecting...');
+  try {
+    var wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
+    brun.ws = new WebSocket(wsUrl);
+    brun.ws.onopen    = function(){ brunSetStatus('running','Running — '+brun.bot.name); brunNextTrade(); };
+    brun.ws.onmessage = function(e){ brunHandleMsg(JSON.parse(e.data)); };
+    brun.ws.onerror   = function(){ brunStop(); showToast('WebSocket error — bot stopped'); };
+    brun.ws.onclose   = function(){ if (brun.running){ brunSetStatus('idle','Connection closed'); brun.running=false; } };
+  } catch(err) { brunStop(); showToast('Connect failed: '+err.message); }
+}
+
+function brunNextTrade() {
+  if (brun.stopped || !brun.running) return;
+  if (brun.trades >= brun.maxTrades)            { brunStop(); showToast('Max trades reached'); return; }
+  if (brun.pnl <= -Math.abs(brun.sl))           { brunStop(); showToast('Stop loss hit'); return; }
+  if (brun.pnl >= Math.abs(brun.tp))            { brunStop(); showToast('Take profit hit'); return; }
+  var cfg = brun.bot.cfg;
+  var proposal = { proposal:1, amount:parseFloat(brun.stake.toFixed(2)), basis:'stake',
+    contract_type:cfg.ct, currency:state.currency||'USD',
+    duration:cfg.dur, duration_unit:cfg.dur_unit, symbol:cfg.symbol };
+  if (cfg.barrier !== null && cfg.barrier !== undefined) proposal.barrier = cfg.barrier;
+  brunSetStatus('running','Trade #'+(brun.trades+1)+' — stake $'+brun.stake.toFixed(2));
+  brun.ws.send(JSON.stringify(proposal));
+}
+
+function brunHandleMsg(msg) {
+  if (msg.error) {
+    brunSetStatus('error','Error: '+msg.error.message);
+    setTimeout(function(){ if (brun.running) brunNextTrade(); }, 2000);
+    return;
+  }
+  if (msg.msg_type==='proposal' && msg.proposal) {
+    brun.ws.send(JSON.stringify({ buy:msg.proposal.id, price:msg.proposal.ask_price }));
+    return;
+  }
+  if (msg.msg_type==='buy' && msg.buy) {
+    brun.ws.send(JSON.stringify({ proposal_open_contract:1, contract_id:msg.buy.contract_id, subscribe:1 }));
+    return;
+  }
+  if (msg.msg_type==='proposal_open_contract' && msg.proposal_open_contract) {
+    var poc = msg.proposal_open_contract;
+    if (!poc.is_sold) return;
+    var won    = poc.profit > 0;
+    var profit = parseFloat(poc.profit)||0;
+    var stake  = parseFloat(poc.buy_price)||brun.stake;
+    brun.trades++; brun.pnl += profit;
+    if (won) { brun.wins++;   brun.stake = brun.initStake; }
+    else     { brun.losses++; brun.stake = parseFloat((brun.stake * brun.bot.cfg.multiplier).toFixed(2)); }
+    brunAddLog({ ct:brun.bot.cfg.ct, stake:stake, won:won, profit:profit });
+    brunUpdateStats();
+    setTimeout(function(){ if (brun.running && !brun.stopped) brunNextTrade(); }, 500);
+  }
+}
+
+function brunStop() {
+  brun.running=false; brun.stopped=true;
+  if (brun.ws) { try{ brun.ws.close(); }catch(e){} brun.ws=null; }
+  var rb = document.getElementById('brunRunBtn');
+  var sb = document.getElementById('brunStopBtn');
+  if (rb) rb.style.display='';
+  if (sb) sb.style.display='none';
+  brunSetStatus('idle','Stopped — '+brun.trades+' trades, P&L: '+(brun.pnl>=0?'+':'')+'$'+brun.pnl.toFixed(2));
+}
+
+document.addEventListener('DOMContentLoaded', function(){ brunRender(); });
