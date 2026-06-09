@@ -222,17 +222,21 @@ async function authorizeToken(bearerToken) {
 }
 
 function updateUserBadge(user) {
-  const badge = document.getElementById('userBadge');
-  const initials = document.getElementById('userInitials');
-  const name = user.fullname || user.loginid || 'NT';
+  var badge = document.getElementById("userBadge");
+  var initials = document.getElementById("userInitials");
+  var name = user.fullname || user.loginid || "NT";
   initials.textContent = name.slice(0, 2).toUpperCase();
-  badge.classList.remove('hidden');
-  var loginBtn = document.querySelector('.btn-login');
-  var signupBtn = document.querySelector('.btn-signup');
-  if (loginBtn) loginBtn.style.display = 'none';
-  if (signupBtn) signupBtn.style.display = 'none';
+  badge.classList.remove("hidden");
+  var loginBtn = document.querySelector(".btn-login");
+  var signupBtn = document.querySelector(".btn-signup");
+  if (loginBtn) loginBtn.style.display = "none";
+  if (signupBtn) signupBtn.style.display = "none";
+  var sb = document.getElementById("switcherBtn");
+  var ab = document.getElementById("apiTokenBtn");
+  if (sb) sb.style.display = "";
+  if (ab) ab.style.display = "none";
   fetchBalance();
-  showToast('Connected as ' + (user.fullname || user.loginid));
+  showToast("Connected as " + (user.fullname || user.loginid));
 }
 
 async function fetchBalance() {
