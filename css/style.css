@@ -2866,22 +2866,30 @@ body { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
   .ai-log { min-height: 250px; }
 }
 
-/* ── LAYOUT FIX v3 ──────────────────────────────────── */
+/* ── LAYOUT FIX FINAL ───────────────────────────────── */
+
+/* Desktop: appContainer fills remaining viewport height */
 #appContainer {
   height: calc(100vh - var(--navbar-h) - 37px);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  min-height: unset;
 }
-/* All pages scroll by default */
-.page { display: none; overflow: hidden; }
+
+/* All pages hidden by default */
+.page { display: none; }
+
+/* Active pages: fill container, scroll internally */
 .page.active {
-  flex: 1; min-height: 0;
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
-/* AI Scalper is the exception — internal scroll only */
+
+/* AI Scalper: no page-level scroll — internal panels scroll */
 #page-ai-scalper.page.active { overflow: hidden; }
 
 .ai-scalper-wrap {
@@ -2906,24 +2914,41 @@ body { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 }
 .ai-log { flex: 1; min-height: 0; overflow-y: auto; }
 
-/* Mobile */
+/* ── MOBILE ─────────────────────────────────────────── */
 @media (max-width: 768px) {
+  /* appContainer scrolls on mobile */
   #appContainer {
     height: calc(100vh - var(--navbar-h) - 37px);
     overflow-y: auto;
+    overflow-x: hidden;
+    display: block;
   }
-  .page.active { overflow: visible; flex: unset; min-height: unset; }
-  #page-ai-scalper.page.active { overflow: visible; }
+
+  /* All pages natural height on mobile */
+  .page.active {
+    display: block;
+    overflow: visible;
+    min-height: unset;
+    flex: unset;
+  }
+
+  /* AI Scalper mobile: stack vertically, full scroll */
+  #page-ai-scalper.page.active {
+    display: block;
+    overflow: visible;
+  }
   .ai-scalper-wrap { overflow: visible; min-height: unset; }
   .ai-scalper-body {
-    flex-direction: column; overflow: visible;
-    min-height: unset; height: auto;
+    flex-direction: column;
+    overflow: visible;
+    min-height: unset;
+    height: auto;
   }
   .ai-left {
     width: 100%; min-width: unset;
     border-right: none; border-bottom: 1px solid #1a1a1a;
     overflow-y: visible; height: auto;
   }
-  .ai-right { min-height: 350px; overflow: visible; }
-  .ai-log { min-height: 250px; overflow-y: auto; }
+  .ai-right { min-height: 400px; overflow: visible; }
+  .ai-log { min-height: 300px; overflow-y: auto; }
 }
