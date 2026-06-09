@@ -1624,6 +1624,10 @@ function brunPopulateSettings(bot) {
   var mult = document.getElementById('brun_mult');
   var stk  = document.getElementById('brun_stake');
   if (sym)  sym.value  = cfg.symbol    || 'R_100';
+  // Sync trade type to match bot's contract type
+  var ctToTT = {'DIGITEVEN':'evenodd','DIGITODD':'evenodd','DIGITOVER':'overunder','DIGITUNDER':'overunder','CALL':'risefall','PUT':'risefall','DIGITMATCH':'matchdiff','DIGITDIFF':'matchdiff'};
+  var ttEl = document.getElementById('brun_trade_type');
+  if (ttEl && cfg.ct) { ttEl.value = ctToTT[cfg.ct] || 'risefall'; brunOnTradeTypeChange(); }
   if (ct)   ct.value   = cfg.ct        || 'CALL';
   if (dur)  dur.value  = cfg.dur       || 1;
   if (duru) duru.value = cfg.dur_unit  || 't';
