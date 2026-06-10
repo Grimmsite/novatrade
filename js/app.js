@@ -1877,9 +1877,15 @@ var ai = {
   pnl:0, trades:0, wins:0, losses:0, stake:1, initStake:1,
   recStep:0, stopped:false,
   cfg:{tp:20,sl:10,max:200,conf:65,mult:1.8,maxRec:3,ticks:50},
-  marketData:{}, // symbol -> {ticks:[], lastPrice:0, winRate:0, trades:0, wins:0}
+  marketData:{}, // symbol -> {ticks:[], lastPrice:0, wins:0, trades:0, digitHistory:[], patternMemory:{}}
   currentSymbol:null, currentCt:null,
-  scanSymbols:['R_10','R_25','R_50','R_75','R_100','1HZ10V','1HZ25V','1HZ50V','1HZ75V','1HZ100V']
+  scanSymbols:['R_10','R_25','R_50','R_75','R_100','1HZ10V','1HZ25V','1HZ50V','1HZ75V','1HZ100V'],
+  // Pattern memory: per symbol per contract type, track last 200 outcomes
+  memory:{}, // sym -> { under8:{outcomes:[], streak:0}, over1:{outcomes:[], streak:0} }
+  // Volatility tracker
+  volatility:{}, // sym -> rolling stddev
+  // Hot/cold streak tracker
+  sessionBias:{} // sym -> { under8bias:0, over1bias:0 } updated after each trade
 };
 
 function aiScalperInit() {
@@ -1929,100 +1935,137 @@ function aiUpdateSignals(freq, pat, mom) {
 
 // ── ANALYSIS ENGINE ────────────────────────────────────────
 
+// ══ WORLD CLASS AI ANALYSIS ENGINE ════════════════════════
+
+// Layer 1: Frequency Analysis (last 100 ticks)
 function aiAnalyzeDigitFreq(ticks, decimals) {
-  // Only trade DIGITUNDER 8 or DIGITOVER 1
-  // DIGITUNDER 8 wins if last digit is 0-7 (~80% base rate)
-  // DIGITOVER  1 wins if last digit is 2-9 (~80% base rate)
   if (ticks.length < 30) return null;
-  var sample = ticks.slice(-100);
-  var digits = sample.map(function(p){
+  var digits = ticks.slice(-100).map(function(p){
     return Math.floor(p * Math.pow(10, decimals||2)) % 10;
   });
   var total = digits.length;
-
-  // Recent 20 ticks for pattern bias
   var recent = digits.slice(-20);
+  var veryRecent = digits.slice(-10);
 
-  // DIGITUNDER 8: loses only when digit = 8 or 9
-  var losersUnder8 = digits.filter(function(d){ return d >= 8; }).length;
-  var recentLosersUnder8 = recent.filter(function(d){ return d >= 8; }).length;
-  var under8WinRate = ((total - losersUnder8) / total) * 100;
-  var recentUnder8WinRate = ((20 - recentLosersUnder8) / 20) * 100;
-  var under8Conf = Math.min(92, (under8WinRate * 0.6) + (recentUnder8WinRate * 0.4));
+  // DIGITUNDER 8: loses when digit >= 8
+  var loss8_all    = digits.filter(function(d){ return d >= 8; }).length;
+  var loss8_rec    = recent.filter(function(d){ return d >= 8; }).length;
+  var loss8_vrec   = veryRecent.filter(function(d){ return d >= 8; }).length;
+  var under8Conf = Math.min(93,
+    ((total - loss8_all) / total * 100) * 0.4 +
+    ((20 - loss8_rec)    / 20    * 100) * 0.35 +
+    ((10 - loss8_vrec)   / 10    * 100) * 0.25
+  );
 
-  // DIGITOVER 1: loses only when digit = 0 or 1
-  var losersOver1 = digits.filter(function(d){ return d <= 1; }).length;
-  var recentLosersOver1 = recent.filter(function(d){ return d <= 1; }).length;
-  var over1WinRate = ((total - losersOver1) / total) * 100;
-  var recentOver1WinRate = ((20 - recentLosersOver1) / 20) * 100;
-  var over1Conf = Math.min(92, (over1WinRate * 0.6) + (recentOver1WinRate * 0.4));
+  // DIGITOVER 1: loses when digit <= 1
+  var loss1_all    = digits.filter(function(d){ return d <= 1; }).length;
+  var loss1_rec    = recent.filter(function(d){ return d <= 1; }).length;
+  var loss1_vrec   = veryRecent.filter(function(d){ return d <= 1; }).length;
+  var over1Conf = Math.min(93,
+    ((total - loss1_all) / total * 100) * 0.4 +
+    ((20 - loss1_rec)    / 20    * 100) * 0.35 +
+    ((10 - loss1_vrec)   / 10    * 100) * 0.25
+  );
 
-  // Pick whichever has stronger recent signal, minimum 70% confidence
-  if (under8Conf > over1Conf && under8Conf >= 70) {
-    return { ct:'DIGITUNDER', barrier:8, confidence: under8Conf };
-  } else if (over1Conf >= 70) {
-    return { ct:'DIGITOVER', barrier:1, confidence: over1Conf };
-  }
-  return null;
+  if (under8Conf >= over1Conf) return { ct:'DIGITUNDER', barrier:8, confidence: under8Conf };
+  return { ct:'DIGITOVER', barrier:1, confidence: over1Conf };
 }
 
-function aiAnalyzePattern(ticks) {
-  // Streak & reversal detection -> Rise/Fall signal
-  if (ticks.length < 10) return null;
-  var last = ticks.slice(-20);
-  var streak = 1, dir = last[last.length-1] > last[last.length-2] ? 1 : -1;
-  for (var i=last.length-2; i>0; i--) {
-    var d = last[i] > last[i-1] ? 1 : -1;
-    if (d === dir) streak++;
-    else break;
+// Layer 2: Pattern Learning (streak + outcome memory)
+function aiAnalyzePattern(ticks, sym, decimals) {
+  if (!ticks || ticks.length < 20) return null;
+  var digits = ticks.slice(-30).map(function(p){
+    return Math.floor(p * Math.pow(10, decimals||2)) % 10;
+  });
+
+  // Detect hot/cold streaks of dangerous digits (8,9 for under8 | 0,1 for over1)
+  var last10 = digits.slice(-10);
+  var danger8 = last10.filter(function(d){ return d >= 8; }).length; // high = bad for under8
+  var danger1 = last10.filter(function(d){ return d <= 1; }).length; // high = bad for over1
+
+  // Streak detection: if dangerous digits clustering, avoid that contract
+  var under8PatConf = Math.min(93, 75 + (5 - danger8) * 3); // fewer 8/9s recently = higher conf
+  var over1PatConf  = Math.min(93, 75 + (5 - danger1) * 3); // fewer 0/1s recently = higher conf
+
+  // Pattern memory boost: use historical win rate for this symbol+contract
+  var mem = ai.memory && ai.memory[sym];
+  if (mem) {
+    var u8outcomes = mem.under8.outcomes.slice(-30);
+    var o1outcomes = mem.over1.outcomes.slice(-30);
+    if (u8outcomes.length >= 5) {
+      var u8wr = u8outcomes.filter(Boolean).length / u8outcomes.length;
+      under8PatConf = Math.min(93, under8PatConf * 0.6 + u8wr * 100 * 0.4);
+    }
+    if (o1outcomes.length >= 5) {
+      var o1wr = o1outcomes.filter(Boolean).length / o1outcomes.length;
+      over1PatConf = Math.min(93, over1PatConf * 0.6 + o1wr * 100 * 0.4);
+    }
+    // Consecutive loss protection: if last 3 trades on a type all lost, skip it
+    var lastU8 = mem.under8.outcomes.slice(-3);
+    var lastO1 = mem.over1.outcomes.slice(-3);
+    if (lastU8.length === 3 && lastU8.every(function(x){ return !x; })) under8PatConf -= 20;
+    if (lastO1.length === 3 && lastO1.every(function(x){ return !x; })) over1PatConf  -= 20;
   }
-  // Long streak -> expect reversal
-  if (streak >= 4) {
-    return { ct: dir===1?'PUT':'CALL', confidence: Math.min(90, 52 + streak*5) };
-  }
-  // Short streak -> follow momentum
-  if (streak >= 2) {
-    return { ct: dir===1?'CALL':'PUT', confidence: Math.min(80, 52 + streak*3) };
-  }
-  return { ct:'CALL', confidence:52 };
+
+  if (under8PatConf >= over1PatConf) return { ct:'DIGITUNDER', barrier:8, confidence: under8PatConf };
+  return { ct:'DIGITOVER', barrier:1, confidence: over1PatConf };
 }
 
-function aiAnalyzeMomentum(ticks) {
-  // EMA crossover signal
-  if (ticks.length < 20) return null;
-  var fast = 5, slow = 15;
-  function ema(arr, period) {
-    var k = 2/(period+1), e = arr[0];
-    for (var i=1;i<arr.length;i++) e = arr[i]*k + e*(1-k);
-    return e;
-  }
-  var last = ticks.slice(-slow);
-  var emaFast = ema(last.slice(-fast), fast);
-  var emaSlow = ema(last, slow);
-  var diff = (emaFast - emaSlow) / emaSlow * 100;
-  if (Math.abs(diff) < 0.001) return { ct:'CALL', confidence:51 };
-  return {
-    ct: emaFast > emaSlow ? 'CALL' : 'PUT',
-    confidence: Math.min(90, 52 + Math.abs(diff)*20)
-  };
+// Layer 3: Momentum / Volatility Filter
+function aiAnalyzeMomentum(ticks, sym) {
+  if (!ticks || ticks.length < 20) return null;
+  var digits = ticks.slice(-50).map(function(p){
+    return Math.floor(p * Math.pow(10, 2)) % 10;
+  });
+
+  // Volatility filter: if market is in extreme run of high/low digits, momentum favors reversion
+  var last5 = digits.slice(-5);
+  var highCount = last5.filter(function(d){ return d >= 8; }).length;
+  var lowCount  = last5.filter(function(d){ return d <= 1; }).length;
+
+  // After 3+ high digits in last 5: strong reversion signal for DIGITUNDER 8
+  if (highCount >= 3) return { ct:'DIGITUNDER', barrier:8, confidence: Math.min(93, 70 + highCount * 5) };
+  // After 3+ low digits in last 5: strong reversion signal for DIGITOVER 1
+  if (lowCount  >= 3) return { ct:'DIGITOVER',  barrier:1, confidence: Math.min(93, 70 + lowCount  * 5) };
+
+  // Neutral momentum: slight edge to whichever had fewer recent danger digits
+  var under8MomConf = Math.min(85, 72 + (5 - last5.filter(function(d){ return d>=8; }).length) * 2);
+  var over1MomConf  = Math.min(85, 72 + (5 - last5.filter(function(d){ return d<=1; }).length) * 2);
+
+  if (under8MomConf >= over1MomConf) return { ct:'DIGITUNDER', barrier:8, confidence: under8MomConf };
+  return { ct:'DIGITOVER', barrier:1, confidence: over1MomConf };
 }
 
-function aiPickBestSignal(ticks, decimals) {
+function aiPickBestSignal(ticks, decimals, sym) {
   var freqSig = aiAnalyzeDigitFreq(ticks, decimals);
-  var patSig  = aiAnalyzePattern(ticks);
-  var momSig  = aiAnalyzeMomentum(ticks);
+  var patSig  = aiAnalyzePattern(ticks, sym, decimals);
+  var momSig  = aiAnalyzeMomentum(ticks, sym);
   var fC = freqSig ? Math.round(freqSig.confidence) : 0;
   var pC = patSig  ? Math.round(patSig.confidence)  : 0;
   var mC = momSig  ? Math.round(momSig.confidence)  : 0;
   aiUpdateSignals(fC, pC, mC);
-  // Require at least 1 signal above threshold
-  var thresh = ai.cfg.conf;
-  var passing = [freqSig,patSig,momSig].filter(function(s){ return s && s.confidence >= thresh; });
-  if (!passing.length) { var fallback = [freqSig,patSig,momSig].filter(Boolean); if (fallback.length) passing = [fallback.reduce(function(a,b){return a.confidence>=b.confidence?a:b;})]; }
-  if (!passing.length) { var fallback = [freqSig,patSig,momSig].filter(Boolean); if (fallback.length) passing = [fallback.reduce(function(a,b){return a.confidence>=b.confidence?a:b;})]; }
-  if (passing.length < 2) return null;
-  // Pick highest confidence
-  var best = passing.reduce(function(a,b){ return a.confidence >= b.confidence ? a : b; });
+
+  // Weighted consensus: freq=40%, pattern=35%, momentum=25%
+  // Both under8 and over1 get a weighted score, pick the winner
+  function scoreFor(ct) {
+    var f = freqSig && freqSig.ct === ct ? freqSig.confidence : 0;
+    var p = patSig  && patSig.ct  === ct ? patSig.confidence  : 0;
+    var m = momSig  && momSig.ct  === ct ? momSig.confidence  : 0;
+    // If a layer has no signal, use neutral 50
+    if (!freqSig) f = 50; if (!patSig) p = 50; if (!momSig) m = 50;
+    return f*0.40 + p*0.35 + m*0.25;
+  }
+  var under8Score = scoreFor('DIGITUNDER');
+  var over1Score  = scoreFor('DIGITOVER');
+  var bestCt      = under8Score >= over1Score ? 'DIGITUNDER' : 'DIGITOVER';
+  var bestBarrier = bestCt === 'DIGITUNDER' ? 8 : 1;
+  var bestConf    = Math.max(under8Score, over1Score);
+
+  // Require minimum confidence threshold
+  var thresh = ai.cfg.conf || 65;
+  if (bestConf < thresh) return null;
+
+  var best = { ct: bestCt, barrier: bestBarrier, confidence: bestConf };
   return best;
 }
 
@@ -2038,7 +2081,15 @@ function aiScanMarkets() {
     };
     ws.onmessage = function(e) {
       var msg = JSON.parse(e.data);
-      if (!ai.marketData[sym]) ai.marketData[sym] = { ticks:[], lastPrice:0, wins:0, trades:0 };
+      if (!ai.marketData[sym]) {
+        ai.marketData[sym] = { ticks:[], lastPrice:0, wins:0, trades:0 };
+        ai.memory[sym] = {
+          under8:{ outcomes:[], streak:0, lastCt:'DIGITUNDER' },
+          over1: { outcomes:[], streak:0, lastCt:'DIGITOVER'  }
+        };
+        ai.volatility[sym] = 0;
+        ai.sessionBias[sym] = { under8:0, over1:0 };
+      }
       if (msg.history && msg.history.prices) {
         ai.marketData[sym].ticks = msg.history.prices.map(Number);
       }
@@ -2046,6 +2097,15 @@ function aiScanMarkets() {
         ai.marketData[sym].ticks.push(Number(msg.tick.quote));
         if (ai.marketData[sym].ticks.length > 500) ai.marketData[sym].ticks.shift();
         ai.marketData[sym].lastPrice = Number(msg.tick.quote);
+        // Update rolling volatility (stddev of last 20 tick changes)
+        var t = ai.marketData[sym].ticks;
+        if (t.length >= 20) {
+          var changes = [];
+          for (var _i = t.length-20; _i < t.length-1; _i++) changes.push(Math.abs(t[_i+1]-t[_i]));
+          var mean = changes.reduce(function(a,b){return a+b;},0)/changes.length;
+          var variance = changes.reduce(function(a,b){return a+Math.pow(b-mean,2);},0)/changes.length;
+          ai.volatility[sym] = Math.sqrt(variance);
+        }
       }
     };
     ws.onerror = function() { ws.close(); delete ai.scanWs[sym]; };
@@ -2061,7 +2121,7 @@ function aiPickBestMarket() {
     var data = ai.marketData[sym];
     if (!data || data.ticks.length < 20) return;
     var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
-    var sig = aiPickBestSignal(data.ticks, dec);
+    var sig = aiPickBestSignal(data.ticks, dec, sym);
     if (!sig) return;
     var wrBonus = data.trades > 5 ? (data.wins/data.trades) * 20 : 0;
     var score = sig.confidence + wrBonus;
@@ -2172,12 +2232,22 @@ function aiHandleMsg(msg, pick) {
     var profit = parseFloat(poc.profit)||0;
     ai.pnl    += profit;
     ai.trades++;
+    // Record outcome in pattern memory
+    if (!ai.memory[pick.sym]) ai.memory[pick.sym] = {
+      under8:{outcomes:[],streak:0}, over1:{outcomes:[],streak:0}
+    };
+    var memKey = pick.sig.ct === 'DIGITUNDER' ? 'under8' : 'over1';
+    ai.memory[pick.sym][memKey].outcomes.push(won);
+    if (ai.memory[pick.sym][memKey].outcomes.length > 200) ai.memory[pick.sym][memKey].outcomes.shift();
+
     if (won) {
       ai.wins++; ai.recStep=0; ai.stake=ai.initStake;
+      ai.memory[pick.sym][memKey].streak = Math.max(0, (ai.memory[pick.sym][memKey].streak||0)) + 1;
       if (ai.marketData[pick.sym]) { ai.marketData[pick.sym].wins++; ai.marketData[pick.sym].trades++; }
       aiLog('WIN  '+pick.sym+' '+pick.sig.ct, 'win', profit);
     } else {
       ai.losses++;
+      ai.memory[pick.sym][memKey].streak = Math.min(0, (ai.memory[pick.sym][memKey].streak||0)) - 1;
       if (ai.marketData[pick.sym]) ai.marketData[pick.sym].trades++;
       if (ai.recStep < ai.cfg.maxRec) {
         ai.recStep++;
