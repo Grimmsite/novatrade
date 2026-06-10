@@ -2608,86 +2608,21 @@ function bmdDrawChart() {
 function bmdAnalyzeMarket(sym, prices, decimals) {
   var total = prices.length;
   var freq = Array(10).fill(0);
-  prices.forEach(function(p){ freq[Math.floor(p * Math.pow(10, decimals)) % 10]++; });
-
-  // Recency-weighted windows: recent matters most
-  var h300 = prices.slice(-300);
-  var h100 = prices.slice(-100);
-  var h20  = prices.slice(-20);
-  var freq300 = Array(10).fill(0); h300.forEach(function(p){ freq300[Math.floor(p*Math.pow(10,decimals))%10]++; });
-  var freq100 = Array(10).fill(0); h100.forEach(function(p){ freq100[Math.floor(p*Math.pow(10,decimals))%10]++; });
-  var freq20  = Array(10).fill(0); h20.forEach(function(p){  freq20[Math.floor(p*Math.pow(10,decimals))%10]++;  });
-
-  // Entropy check: how uniform is the distribution? (1.0 = perfectly uniform = no edge)
-  var entropy = 0;
-  freq.forEach(function(f){ if(f>0){ var p=f/total; entropy -= p*Math.log2(p); } });
-  var maxEntropy = Math.log2(10); // 3.32 for 10 equal buckets
-  var entropyRatio = entropy / maxEntropy; // >0.98 = flat, no edge
-
-  // Streak: how many times did digit appear in last 10 ticks?
-  var last10digits = prices.slice(-10).map(function(p){ return Math.floor(p*Math.pow(10,decimals))%10; });
-  var streakCount = Array(10).fill(0);
-  last10digits.forEach(function(d){ streakCount[d]++; });
-
-  var confidence = freq.map(function(f, d) {
-    var pctAll  = f / total * 100;
-    var pct300  = freq300[d] / h300.length * 100;
-    var pct100  = freq100[d] / h100.length * 100;
-    var pct20   = freq20[d]  / h20.length  * 100;
-
-    // Recency-first weighting: 20-tick=40%, 100-tick=30%, 300-tick=20%, full=10%
-    var scoreMatch = pct20*0.40 + pct100*0.30 + pct300*0.20 + pctAll*0.10;
-    var scoreDiff  = (100-pct20)*0.40 + (100-pct100)*0.30 + (100-pct300)*0.20 + (100-pctAll)*0.10;
-
-    // Consistency gate: digit must be above average in ALL 3 windows to be a strong match
-    var consistent = pct20 > 10 && pct100 > 10 && pct300 > 10;
-    if (!consistent) scoreMatch *= 0.92; // penalty for inconsistent digits
-
-    // Hot streak bonus for match: appeared 3+ times in last 10
-    if (streakCount[d] >= 2) scoreMatch += streakCount[d] * 2;
-    // Cold streak bonus for differ: appeared 0-1 times in last 10
-    if (streakCount[d] <= 1) scoreDiff += (2 - streakCount[d]) * 2;
-
-    // Cooling penalty: was hot overall but fading in last 20
-    var cooling = pctAll > 12 && pct20 < pctAll * 0.6;
-
-    return {
-      d: d, pctAll: pctAll, pct20: pct20, pct100: pct100,
-      scoreMatch: scoreMatch, scoreDiff: scoreDiff,
-      cooling: cooling, consistent: consistent,
-      streak: streakCount[d]
-    };
+  prices.forEach(function(p) {
+    freq[Math.floor(p * Math.pow(10, decimals)) % 10]++;
   });
-
-  return { freq: freq, total: total, confidence: confidence, entropyRatio: entropyRatio };
+  // Simple pct per digit — that's all we need
+  var digits = freq.map(function(f, d) {
+    return { d: d, count: f, pct: f / total * 100 };
+  });
+  return { freq: freq, total: total, digits: digits };
 }
 
-function bmdPickDigits(analysis, minConf) {
-  var conf = analysis.confidence;
-
-  // Entropy gate: log only, do not block
-  var entropyWarning = analysis.entropyRatio > 0.998;
-
-  // Adaptive confidence: tighten after losing rounds, relax after winning
-  var adaptiveConf = minConf + (bmd.consecutiveLossRounds * 1) - (bmd.consecutiveWinRounds * 1);
-  adaptiveConf = Math.max(minConf, Math.min(adaptiveConf, 75));
-
-  var matchRanked = conf.slice().sort(function(a, b) { return b.scoreMatch - a.scoreMatch; });
-  var diffRanked  = conf.slice().sort(function(a, b) { return b.scoreDiff  - a.scoreDiff;  });
-
-  var matchDigits = matchRanked.slice(0, 5).filter(function(c) {
-    if (bmd.digitSkip[c.d] >= 3) return false;    // on losing streak (raised from 2→3)
-    if (c.scoreMatch < adaptiveConf) return false; // below adaptive threshold
-    return true;
-  });
-
-  var diffDigits = diffRanked.slice(0, 5).filter(function(c) {
-    if (bmd.digitSkip[c.d] >= 3) return false;
-    if (c.scoreDiff < adaptiveConf) return false;
-    return true;
-  });
-
-  return { matchDigits: matchDigits, diffDigits: diffDigits, adaptiveConf: adaptiveConf };
+function bmdPickDigits(analysis) {
+  var sorted = analysis.digits.slice().sort(function(a, b) { return b.count - a.count; });
+  var matchDigits = sorted.slice(0, 5);   // top 5 most frequent
+  var diffDigits  = sorted.slice(5);      // bottom 5 least frequent
+  return { matchDigits: matchDigits, diffDigits: diffDigits };
 }
 
 function bmdRenderFreqChart(sym, analysis) {
@@ -2913,15 +2848,14 @@ async function bmdMainLoop() {
 
   bmdRenderFreqChart(sym, d.analysis);
 
-  var picked = bmdPickDigits(d.analysis, minConf);
+  var picked = bmdPickDigits(d.analysis);
   bmd.sym = sym;
 
   var roundResults = [];
   var roundPnl = 0;
 
   if (contractTypeSel === 'DIGITMATCH' || contractTypeSel === 'both') {
-    if (picked.reason === 'entropy') { bmdLog('⚠️ Market too uniform — no edge detected, skipping round', 'info'); }
-    else if (picked.matchDigits.length === 0) { bmdLog('No match candidates above confidence threshold (adaptive: '+Math.round(picked.adaptiveConf||0)+'%)', 'info'); }
+    if (picked.matchDigits.length === 0) { bmdLog('No match candidates', 'info'); }
     else {
       bmdSetStatus('running', 'Placing ' + picked.matchDigits.length + ' MATCH trades on ' + sym);
       bmdLog('Round '+(bmd.roundsDone+1)+' MATCH: digits '+picked.matchDigits.map(function(c){return c.d;}).join(','), 'round');
@@ -2930,7 +2864,7 @@ async function bmdMainLoop() {
     }
   }
   if (contractTypeSel === 'DIGITDIFF' || contractTypeSel === 'both') {
-    if (picked.reason !== 'entropy' && picked.diffDigits.length === 0) { bmdLog('No differ candidates above confidence threshold (adaptive: '+Math.round(picked.adaptiveConf||0)+'%)', 'info'); }
+    if (picked.diffDigits.length === 0) { bmdLog('No differ candidates', 'info'); }
     else {
       bmdSetStatus('running', 'Placing ' + picked.diffDigits.length + ' DIFFER trades on ' + sym);
       bmdLog('Round '+(bmd.roundsDone+1)+' DIFFER: digits '+picked.diffDigits.map(function(c){return c.d;}).join(','), 'round');
