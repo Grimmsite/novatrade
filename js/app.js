@@ -1930,36 +1930,40 @@ function aiUpdateSignals(freq, pat, mom) {
 // ── ANALYSIS ENGINE ────────────────────────────────────────
 
 function aiAnalyzeDigitFreq(ticks, decimals) {
-  // Returns {ct, barrier, confidence}
-  if (ticks.length < 20) return null;
-  var digits = ticks.slice(-50).map(function(p){
+  // Only trade DIGITUNDER 8 or DIGITOVER 1
+  // DIGITUNDER 8 wins if last digit is 0-7 (~80% base rate)
+  // DIGITOVER  1 wins if last digit is 2-9 (~80% base rate)
+  if (ticks.length < 30) return null;
+  var sample = ticks.slice(-100);
+  var digits = sample.map(function(p){
     return Math.floor(p * Math.pow(10, decimals||2)) % 10;
   });
-  var freq = Array(10).fill(0);
-  digits.forEach(function(d){ freq[d]++; });
   var total = digits.length;
-  // Find most skewed digit
-  var maxD = 0, maxF = 0, minD = 0, minF = total;
-  for (var i=0;i<10;i++) {
-    if (freq[i] > maxF) { maxF=freq[i]; maxD=i; }
-    if (freq[i] < minF) { minF=freq[i]; minD=i; }
+
+  // Recent 20 ticks for pattern bias
+  var recent = digits.slice(-20);
+
+  // DIGITUNDER 8: loses only when digit = 8 or 9
+  var losersUnder8 = digits.filter(function(d){ return d >= 8; }).length;
+  var recentLosersUnder8 = recent.filter(function(d){ return d >= 8; }).length;
+  var under8WinRate = ((total - losersUnder8) / total) * 100;
+  var recentUnder8WinRate = ((20 - recentLosersUnder8) / 20) * 100;
+  var under8Conf = Math.min(92, (under8WinRate * 0.6) + (recentUnder8WinRate * 0.4));
+
+  // DIGITOVER 1: loses only when digit = 0 or 1
+  var losersOver1 = digits.filter(function(d){ return d <= 1; }).length;
+  var recentLosersOver1 = recent.filter(function(d){ return d <= 1; }).length;
+  var over1WinRate = ((total - losersOver1) / total) * 100;
+  var recentOver1WinRate = ((20 - recentLosersOver1) / 20) * 100;
+  var over1Conf = Math.min(92, (over1WinRate * 0.6) + (recentOver1WinRate * 0.4));
+
+  // Pick whichever has stronger recent signal, minimum 70% confidence
+  if (under8Conf > over1Conf && under8Conf >= 70) {
+    return { ct:'DIGITUNDER', barrier:8, confidence: under8Conf };
+  } else if (over1Conf >= 70) {
+    return { ct:'DIGITOVER', barrier:1, confidence: over1Conf };
   }
-  var expected = total/10;
-  var overSkew  = ((maxF - expected) / expected) * 100;
-  var underSkew = ((expected - minF) / expected) * 100;
-  // Even/Odd analysis
-  var evens = [0,2,4,6,8].reduce(function(s,d){return s+freq[d];},0);
-  var odds  = total - evens;
-  var eoSkew = Math.abs(evens-odds)/total*100;
-  var eoFavor = evens > odds ? 'DIGITEVEN' : 'DIGITODD';
-  // Pick best signal
-  if (overSkew > underSkew && overSkew > eoSkew) {
-    return { ct:'DIGITUNDER', barrier:maxD, confidence: Math.min(95, 50+overSkew*0.8) };
-  } else if (underSkew > eoSkew) {
-    return { ct:'DIGITOVER', barrier:minD > 0 ? minD-1 : 0, confidence: Math.min(95, 50+underSkew*0.8) };
-  } else {
-    return { ct:eoFavor, barrier:null, confidence: Math.min(95, 50+eoSkew*1.2) };
-  }
+  return null;
 }
 
 function aiAnalyzePattern(ticks) {
