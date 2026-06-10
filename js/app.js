@@ -2735,16 +2735,22 @@ function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
     if (!done) { done = true; ws.close(); onResult(false, -stake, digit, 'timeout'); }
   }, 15000);
   ws.onopen = function() {
-    ws.send(JSON.stringify({
-      proposal: 1, amount: parseFloat(stake.toFixed(2)), basis: 'stake',
-      contract_type: contractType, currency: state.currency || 'USD',
-      duration: 1, duration_unit: 't', underlying_symbol: sym, barrier: digit
-    }));
+    // Authorize first — required before any trade proposal
+    ws.send(JSON.stringify({ authorize: state.bearerToken }));
   };
   ws.onmessage = function(e) {
     var msg = JSON.parse(e.data);
     if (msg.error) {
       if (!done) { done = true; clearTimeout(timeout); onResult(false, 0, digit, msg.error.message); ws.close(); }
+      return;
+    }
+    if (msg.authorize) {
+      // Authorized — now send the proposal
+      ws.send(JSON.stringify({
+        proposal: 1, amount: parseFloat(stake.toFixed(2)), basis: 'stake',
+        contract_type: contractType, currency: state.currency || 'USD',
+        duration: 1, duration_unit: 't', underlying_symbol: sym, barrier: digit
+      }));
       return;
     }
     if (msg.proposal) {
