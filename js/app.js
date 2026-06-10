@@ -2004,18 +2004,25 @@ function aiAnalyzeDigitFreq(ticks, decimals, sym) {
 // Layer 2: Pattern Learning (streak + outcome memory)
 function aiAnalyzePattern(ticks, sym, decimals) {
   if (!ticks || ticks.length < 20) return null;
-  var digits = ticks.slice(-30).map(function(p){
+  var digits = ticks.slice(-50).map(function(p){
     return Math.floor(p * Math.pow(10, decimals||2)) % 10;
   });
 
-  // Detect hot/cold streaks of dangerous digits (8,9 for under8 | 0,1 for over1)
+  // Extended streak detection over last 20 ticks for reliability
+  var last20 = digits.slice(-20);
   var last10 = digits.slice(-10);
-  var danger8 = last10.filter(function(d){ return d >= 8; }).length; // high = bad for under8
-  var danger1 = last10.filter(function(d){ return d <= 1; }).length; // high = bad for over1
+  var danger8_20 = last20.filter(function(d){ return d >= 8; }).length;
+  var danger1_20 = last20.filter(function(d){ return d <= 1; }).length;
+  var danger8_10 = last10.filter(function(d){ return d >= 8; }).length;
+  var danger1_10 = last10.filter(function(d){ return d <= 1; }).length;
 
-  // Streak detection: if dangerous digits clustering, avoid that contract
-  var under8PatConf = Math.min(93, 75 + (2 - danger8) * 6); // danger8>2 = penalty
-  var over1PatConf  = Math.min(93, 75 + (2 - danger1) * 6); // danger1>2 = penalty
+  // Weight recent 10 more heavily than last 20
+  var danger8 = danger8_10 * 0.6 + danger8_20 * 0.4;
+  var danger1 = danger1_10 * 0.6 + danger1_20 * 0.4;
+
+  // Tighter penalty: even 1.5 weighted danger digits starts hurting
+  var under8PatConf = Math.min(93, 75 + (1.5 - danger8) * 7);
+  var over1PatConf  = Math.min(93, 75 + (1.5 - danger1) * 7);
 
   // Pattern memory boost: use historical win rate for this symbol+contract
   var mem = ai.memory && ai.memory[sym];
@@ -2049,19 +2056,24 @@ function aiAnalyzeMomentum(ticks, sym) {
   });
 
   // Volatility filter: if market is in extreme run of high/low digits, momentum favors reversion
-  var last5 = digits.slice(-5);
-  var highCount = last5.filter(function(d){ return d >= 8; }).length;
-  var lowCount  = last5.filter(function(d){ return d <= 1; }).length;
+  var last20 = digits.slice(-20);
+  var last10 = digits.slice(-10);
+  var highCount20 = last20.filter(function(d){ return d >= 8; }).length;
+  var lowCount20  = last20.filter(function(d){ return d <= 1; }).length;
+  var highCount10 = last10.filter(function(d){ return d >= 8; }).length;
+  var lowCount10  = last10.filter(function(d){ return d <= 1; }).length;
 
-  // After 3+ high digits in last 5: strong reversion signal for DIGITUNDER 8
-  if (highCount >= 3) return { ct:'DIGITUNDER', barrier:8, confidence: Math.min(93, 70 + highCount * 5) };
-  // After 3+ low digits in last 5: strong reversion signal for DIGITOVER 1
-  if (lowCount  >= 3) return { ct:'DIGITOVER',  barrier:1, confidence: Math.min(93, 70 + lowCount  * 5) };
+  // Weighted: last 10 = 60%, last 20 = 40%
+  var highCount = highCount10 * 0.6 + highCount20 * 0.4;
+  var lowCount  = lowCount10  * 0.6 + lowCount20  * 0.4;
 
-  // Neutral momentum: slight edge to whichever had fewer recent danger digits
-  // Expected ~1 danger digit in last 5 (20% base rate)
-  var under8MomConf = Math.min(88, 75 + (1 - last5.filter(function(d){ return d>=8; }).length) * 8);
-  var over1MomConf  = Math.min(88, 75 + (1 - last5.filter(function(d){ return d<=1; }).length) * 8);
+  // Reversion signal: 3+ weighted high digits = UNDER likely next
+  if (highCount >= 3) return { ct:'DIGITUNDER', barrier:8, confidence: Math.min(93, 70 + highCount * 4) };
+  if (lowCount  >= 3) return { ct:'DIGITOVER',  barrier:1, confidence: Math.min(93, 70 + lowCount  * 4) };
+
+  // Neutral: edge to whichever side has fewer danger digits recently
+  var under8MomConf = Math.min(88, 75 + (2 - highCount) * 6);
+  var over1MomConf  = Math.min(88, 75 + (2 - lowCount)  * 6);
 
   if (under8MomConf >= over1MomConf) return { ct:'DIGITUNDER', barrier:8, confidence: under8MomConf };
   return { ct:'DIGITOVER', barrier:1, confidence: over1MomConf };
@@ -2594,50 +2606,91 @@ function bmdDrawChart() {
 
 // ── DIGIT FREQUENCY ANALYSIS ───────────────────────────────
 function bmdAnalyzeMarket(sym, prices, decimals) {
-  var freq = Array(10).fill(0);
   var total = prices.length;
-  prices.forEach(function(p) {
-    freq[Math.floor(p * Math.pow(10, decimals)) % 10]++;
-  });
+  var freq = Array(10).fill(0);
+  prices.forEach(function(p){ freq[Math.floor(p * Math.pow(10, decimals)) % 10]++; });
 
-  // Weighted confidence: full history 40%, last 500 35%, last 100 25%
-  var h500 = prices.slice(-500);
+  // Recency-weighted windows: recent matters most
+  var h300 = prices.slice(-300);
   var h100 = prices.slice(-100);
-  var freq500 = Array(10).fill(0); h500.forEach(function(p){ freq500[Math.floor(p*Math.pow(10,decimals))%10]++; });
+  var h20  = prices.slice(-20);
+  var freq300 = Array(10).fill(0); h300.forEach(function(p){ freq300[Math.floor(p*Math.pow(10,decimals))%10]++; });
   var freq100 = Array(10).fill(0); h100.forEach(function(p){ freq100[Math.floor(p*Math.pow(10,decimals))%10]++; });
+  var freq20  = Array(10).fill(0); h20.forEach(function(p){  freq20[Math.floor(p*Math.pow(10,decimals))%10]++;  });
+
+  // Entropy check: how uniform is the distribution? (1.0 = perfectly uniform = no edge)
+  var entropy = 0;
+  freq.forEach(function(f){ if(f>0){ var p=f/total; entropy -= p*Math.log2(p); } });
+  var maxEntropy = Math.log2(10); // 3.32 for 10 equal buckets
+  var entropyRatio = entropy / maxEntropy; // >0.98 = flat, no edge
+
+  // Streak: how many times did digit appear in last 10 ticks?
+  var last10digits = prices.slice(-10).map(function(p){ return Math.floor(p*Math.pow(10,decimals))%10; });
+  var streakCount = Array(10).fill(0);
+  last10digits.forEach(function(d){ streakCount[d]++; });
 
   var confidence = freq.map(function(f, d) {
     var pctAll  = f / total * 100;
-    var pct500  = freq500[d] / h500.length * 100;
+    var pct300  = freq300[d] / h300.length * 100;
     var pct100  = freq100[d] / h100.length * 100;
-    // Expected uniform = 10%. Score how far each digit deviates
-    var scoreMatch = pctAll * 0.4 + pct500 * 0.35 + pct100 * 0.25;
-    var scoreDiff  = (100 - pctAll) * 0.4 + (100 - pct500) * 0.35 + (100 - pct100) * 0.25;
-    // Penalise digits that were hot but cooling (dropped in last 100 vs full history)
-    var cooling = pctAll > 12 && pct100 < pctAll * 0.7;
-    return { d: d, pctAll: pctAll, scoreMatch: scoreMatch, scoreDiff: scoreDiff, cooling: cooling };
+    var pct20   = freq20[d]  / h20.length  * 100;
+
+    // Recency-first weighting: 20-tick=40%, 100-tick=30%, 300-tick=20%, full=10%
+    var scoreMatch = pct20*0.40 + pct100*0.30 + pct300*0.20 + pctAll*0.10;
+    var scoreDiff  = (100-pct20)*0.40 + (100-pct100)*0.30 + (100-pct300)*0.20 + (100-pctAll)*0.10;
+
+    // Consistency gate: digit must be above average in ALL 3 windows to be a strong match
+    var consistent = pct20 > 10 && pct100 > 10 && pct300 > 10;
+    if (!consistent) scoreMatch *= 0.75; // penalty for inconsistent digits
+
+    // Hot streak bonus for match: appeared 3+ times in last 10
+    if (streakCount[d] >= 3) scoreMatch += streakCount[d] * 2;
+    // Cold streak bonus for differ: appeared 0-1 times in last 10
+    if (streakCount[d] <= 1) scoreDiff += (2 - streakCount[d]) * 2;
+
+    // Cooling penalty: was hot overall but fading in last 20
+    var cooling = pctAll > 12 && pct20 < pctAll * 0.6;
+
+    return {
+      d: d, pctAll: pctAll, pct20: pct20, pct100: pct100,
+      scoreMatch: scoreMatch, scoreDiff: scoreDiff,
+      cooling: cooling, consistent: consistent,
+      streak: streakCount[d]
+    };
   });
 
-  return { freq: freq, total: total, confidence: confidence };
+  return { freq: freq, total: total, confidence: confidence, entropyRatio: entropyRatio };
 }
 
 function bmdPickDigits(analysis, minConf) {
   var conf = analysis.confidence;
 
-  // Sort by match score descending — top 5 are match candidates
+  // Entropy gate: if market is too uniform, no real edge exists — skip entirely
+  if (analysis.entropyRatio > 0.985) {
+    return { matchDigits: [], diffDigits: [], reason: 'entropy' };
+  }
+
+  // Adaptive confidence: tighten after losing rounds, relax after winning
+  var adaptiveConf = minConf + (bmd.consecutiveLossRounds * 2) - (bmd.consecutiveWinRounds * 1);
+  adaptiveConf = Math.max(minConf, Math.min(adaptiveConf, 85));
+
   var matchRanked = conf.slice().sort(function(a, b) { return b.scoreMatch - a.scoreMatch; });
-  // Sort by differ score descending — top 5 are differ candidates
-  var diffRanked  = conf.slice().sort(function(a, b) { return b.scoreDiff - a.scoreDiff; });
+  var diffRanked  = conf.slice().sort(function(a, b) { return b.scoreDiff  - a.scoreDiff;  });
 
   var matchDigits = matchRanked.slice(0, 5).filter(function(c) {
-    // Skip cooling digits and digits on 2-round losing streak
-    return !c.cooling && bmd.digitSkip[c.d] < 2 && c.scoreMatch >= minConf;
-  });
-  var diffDigits = diffRanked.slice(0, 5).filter(function(c) {
-    return bmd.digitSkip[c.d] < 2 && c.scoreDiff >= minConf;
+    if (c.cooling) return false;                   // fading digit
+    if (bmd.digitSkip[c.d] >= 2) return false;    // on losing streak
+    if (c.scoreMatch < adaptiveConf) return false; // below adaptive threshold
+    return true;
   });
 
-  return { matchDigits: matchDigits, diffDigits: diffDigits };
+  var diffDigits = diffRanked.slice(0, 5).filter(function(c) {
+    if (bmd.digitSkip[c.d] >= 2) return false;
+    if (c.scoreDiff < adaptiveConf) return false;
+    return true;
+  });
+
+  return { matchDigits: matchDigits, diffDigits: diffDigits, adaptiveConf: adaptiveConf };
 }
 
 function bmdRenderFreqChart(sym, analysis) {
@@ -2860,7 +2913,8 @@ async function bmdMainLoop() {
   var roundPnl = 0;
 
   if (contractTypeSel === 'DIGITMATCH' || contractTypeSel === 'both') {
-    if (picked.matchDigits.length === 0) { bmdLog('No match candidates above confidence threshold', 'info'); }
+    if (picked.reason === 'entropy') { bmdLog('⚠️ Market too uniform — no edge detected, skipping round', 'info'); }
+    else if (picked.matchDigits.length === 0) { bmdLog('No match candidates above confidence threshold (adaptive: '+Math.round(picked.adaptiveConf||0)+'%)', 'info'); }
     else {
       bmdSetStatus('running', 'Placing ' + picked.matchDigits.length + ' MATCH trades on ' + sym);
       bmdLog('Round '+(bmd.roundsDone+1)+' MATCH: digits '+picked.matchDigits.map(function(c){return c.d;}).join(','), 'round');
@@ -2869,7 +2923,7 @@ async function bmdMainLoop() {
     }
   }
   if (contractTypeSel === 'DIGITDIFF' || contractTypeSel === 'both') {
-    if (picked.diffDigits.length === 0) { bmdLog('No differ candidates above confidence threshold', 'info'); }
+    if (picked.reason !== 'entropy' && picked.diffDigits.length === 0) { bmdLog('No differ candidates above confidence threshold (adaptive: '+Math.round(picked.adaptiveConf||0)+'%)', 'info'); }
     else {
       bmdSetStatus('running', 'Placing ' + picked.diffDigits.length + ' DIFFER trades on ' + sym);
       bmdLog('Round '+(bmd.roundsDone+1)+' DIFFER: digits '+picked.diffDigits.map(function(c){return c.d;}).join(','), 'round');
