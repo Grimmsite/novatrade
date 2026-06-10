@@ -1940,9 +1940,18 @@ function aiUpdateSignals(freq, pat, mom) {
 // ══ WORLD CLASS AI ANALYSIS ENGINE ════════════════════════
 
 // Layer 1: Frequency Analysis (last 100 ticks)
-function aiAnalyzeDigitFreq(ticks, decimals) {
-  if (ticks.length < 100) return null;
-  var digits = ticks.slice(-100).map(function(p){
+function aiAnalyzeDigitFreq(ticks, decimals, sym) {
+  if (ticks.length < 30) return null;
+  // Use full digit history if available (from 1000-tick prefetch)
+  var fullDigits = null;
+  if (sym && ai.marketData[sym] && ai.marketData[sym].digitFreq && ai.marketData[sym].digitTotal >= 100) {
+    var freq = ai.marketData[sym].digitFreq;
+    var tot  = ai.marketData[sym].digitTotal;
+    // Reconstruct digits array from frequency for compatibility
+    fullDigits = [];
+    for (var d=0; d<10; d++) for (var n=0; n<freq[d]; n++) fullDigits.push(d);
+  }
+  var digits = fullDigits || ticks.slice(-100).map(function(p){
     return Math.floor(p * Math.pow(10, decimals||2)) % 10;
   });
   var total = digits.length;
@@ -2039,7 +2048,7 @@ function aiAnalyzeMomentum(ticks, sym) {
 }
 
 function aiPickBestSignal(ticks, decimals, sym) {
-  var freqSig = aiAnalyzeDigitFreq(ticks, decimals);
+  var freqSig = aiAnalyzeDigitFreq(ticks, decimals, sym);
   var patSig  = aiAnalyzePattern(ticks, sym, decimals);
   var momSig  = aiAnalyzeMomentum(ticks, sym);
   var fC = freqSig ? Math.round(freqSig.confidence) : 0;
@@ -2079,8 +2088,10 @@ function aiScanMarkets() {
     if (ai.scanWs[sym]) return; // already scanning
     var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
     ws.onopen = function() {
-      ws.send(JSON.stringify({ ticks_history:sym, count:60, end:'latest', style:'ticks' }));
+      ws.send(JSON.stringify({ ticks_history:sym, count:1000, end:'latest', style:'ticks' }));
+      ws.send(JSON.stringify({ ticks_history:sym, count:1000, end:'latest', style:'ticks', granularity:0 }));
       ws.send(JSON.stringify({ ticks:sym, subscribe:1 }));
+      ws.send(JSON.stringify({ proposal:1, amount:1, basis:'stake', contract_type:'DIGITUNDER', currency:'USD', duration:1, duration_unit:'t', underlying_symbol:sym, barrier:8 }));
     };
     ws.onmessage = function(e) {
       var msg = JSON.parse(e.data);
@@ -2094,7 +2105,16 @@ function aiScanMarkets() {
         ai.sessionBias[sym] = { under8:0, over1:0 };
       }
       if (msg.history && msg.history.prices) {
-        ai.marketData[sym].ticks = msg.history.prices.map(Number);
+        var prices = msg.history.prices.map(Number);
+        // Merge with existing ticks, keep latest 1000
+        ai.marketData[sym].ticks = prices.concat(ai.marketData[sym].ticks).slice(-1000);
+        // Pre-calculate digit distribution from full history
+        var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+        var digits = prices.map(function(p){ return Math.floor(p * Math.pow(10, dec)) % 10; });
+        var freq = Array(10).fill(0);
+        digits.forEach(function(d){ freq[d]++; });
+        ai.marketData[sym].digitFreq = freq;
+        ai.marketData[sym].digitTotal = digits.length;
       }
       if (msg.tick && msg.tick.quote) {
         ai.marketData[sym].ticks.push(Number(msg.tick.quote));
