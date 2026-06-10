@@ -930,44 +930,45 @@ function startScanAll() {
 }
 
 // ─── TRADE PLACEMENT ───
-function placeTrade(symbol, contractType) {
-  if (!state.apiToken) {
-    showToast('⚠️ Please connect your API token first');
-    showApiModal();
+async function placeTrade(symbol, contractType) {
+  if (!state.bearerToken) {
+    showToast('Please log in first');
+    showLoginModal();
     return;
   }
   const stakeEl = document.getElementById('stake-' + symbol);
   const durEl = document.getElementById('tdur-' + symbol);
   const stake = parseFloat(stakeEl?.value || 0.5);
   const dur = parseInt(durEl?.value || 1);
-
+  const wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
   const ws = createWS(
-    () => wsSend(ws, { authorize: state.apiToken }),
-    (msg) => {
-      if (msg.authorize) {
-        wsSend(ws, {
-          proposal: 1,
-          amount: stake,
-          basis: 'stake',
-          contract_type: contractType,
-          currency: state.currency,
-          duration: dur,
-          duration_unit: 't',
-          symbol: symbol,
-        });
-      } else if (msg.proposal) {
+    function() {
+      wsSend(ws, {
+        proposal: 1,
+        amount: stake,
+        basis: 'stake',
+        contract_type: contractType,
+        currency: state.currency,
+        duration: dur,
+        duration_unit: 't',
+        underlying_symbol: symbol,
+      });
+    },
+    function(msg) {
+      if (msg.proposal) {
         wsSend(ws, { buy: msg.proposal.id, price: msg.proposal.ask_price });
       } else if (msg.buy) {
-        showToast('✅ Trade placed! Contract: ' + msg.buy.contract_id);
+        showToast('Trade placed! Contract: ' + msg.buy.contract_id);
+        fetchBalance();
         ws.close();
       } else if (msg.error) {
-        showToast('❌ ' + msg.error.message);
+        showToast('Error: ' + msg.error.message);
         ws.close();
       }
-    }
+    },
+    null, null, wsUrl
   );
 }
-
 function showAutoTradeSettings(symbol) {
   showToast('⚙ Auto trade settings for ' + (MARKETS[symbol]?.name || symbol));
 }
