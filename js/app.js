@@ -2246,6 +2246,32 @@ function aiPickBestMarket() {
     var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
     var sig = aiPickBestSignal(data.ticks, dec, sym);
     if (!sig) return;
+
+    // ── STRICT LOSS AVOIDANCE FILTERS ──────────────────────
+    // 1. Deriv historical edge: require 78%+ win rate for chosen contract
+    if (sig.ct === 'DIGITUNDER') {
+      var u8pct = parseFloat(data.derivUnder8Pct);
+      if (!isNaN(u8pct) && u8pct < 78) return; // statistically weak market for this contract
+    } else {
+      var o1pct = parseFloat(data.derivOver1Pct);
+      if (!isNaN(o1pct) && o1pct < 78) return;
+    }
+
+    // 2. Session performance: skip market if win rate < 50% after 5+ trades
+    if (data.trades >= 5 && (data.wins / data.trades) < 0.50) return;
+
+    // 3. Pattern memory: hard skip if last 3 on this contract all lost
+    var mem = ai.memory[sym];
+    if (mem) {
+      var ctKey = sig.ct === 'DIGITUNDER' ? 'under8' : 'over1';
+      var last3 = mem[ctKey].outcomes.slice(-3);
+      if (last3.length === 3 && last3.every(function(x){ return !x; })) return;
+    }
+
+    // 4. Minimum confidence gate (must exceed configured threshold)
+    if (sig.confidence < ai.cfg.conf) return;
+    // ───────────────────────────────────────────────────────
+
     // Win rate bonus from session history
     var wrBonus = data.trades > 5 ? (data.wins / data.trades) * 15 : 0;
     // Tick quality bonus: more ticks = more reliable
