@@ -1942,19 +1942,26 @@ function aiUpdateSignals(freq, pat, mom) {
 // Layer 1: Frequency Analysis (last 100 ticks)
 function aiAnalyzeDigitFreq(ticks, decimals, sym) {
   if (ticks.length < 30) return null;
-  // Use full digit history if available (from 1000-tick prefetch)
-  var fullDigits = null;
-  if (sym && ai.marketData[sym] && ai.marketData[sym].digitFreq && ai.marketData[sym].digitTotal >= 100) {
+  // Priority: 1) Deriv's own 1000-tick stats, 2) our prefetch, 3) live ticks
+  var digits, total;
+  if (sym && ai.marketData[sym] && ai.marketData[sym].derivDigitFreq && ai.marketData[sym].derivDigitTotal >= 100) {
+    // Use Deriv's authoritative digit distribution
+    var dFreq = ai.marketData[sym].derivDigitFreq;
+    var dTot  = ai.marketData[sym].derivDigitTotal;
+    digits = [];
+    for (var d=0; d<10; d++) for (var n=0; n<dFreq[d]; n++) digits.push(d);
+    total = dTot;
+  } else if (sym && ai.marketData[sym] && ai.marketData[sym].digitFreq && ai.marketData[sym].digitTotal >= 100) {
     var freq = ai.marketData[sym].digitFreq;
-    var tot  = ai.marketData[sym].digitTotal;
-    // Reconstruct digits array from frequency for compatibility
-    fullDigits = [];
-    for (var d=0; d<10; d++) for (var n=0; n<freq[d]; n++) fullDigits.push(d);
+    digits = [];
+    for (var d=0; d<10; d++) for (var n=0; n<freq[d]; n++) digits.push(d);
+    total = ai.marketData[sym].digitTotal;
+  } else {
+    digits = ticks.slice(-100).map(function(p){
+      return Math.floor(p * Math.pow(10, decimals||2)) % 10;
+    });
+    total = digits.length;
   }
-  var digits = fullDigits || ticks.slice(-100).map(function(p){
-    return Math.floor(p * Math.pow(10, decimals||2)) % 10;
-  });
-  var total = digits.length;
   var recent = digits.slice(-20);
   var veryRecent = digits.slice(-10);
 
@@ -2081,9 +2088,41 @@ function aiPickBestSignal(ticks, decimals, sym) {
   return best;
 }
 
+// ── DIGIT STATS FROM DERIV ─────────────────────────────────
+function aiFetchDigitStats(sym) {
+  var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+  ws.onopen = function() {
+    ws.send(JSON.stringify({ ticks_history:sym, count:1000, end:'latest', style:'ticks' }));
+  };
+  ws.onmessage = function(e) {
+    var msg = JSON.parse(e.data);
+    if (msg.history && msg.history.prices) {
+      var prices = msg.history.prices.map(Number);
+      var freq = Array(10).fill(0);
+      var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+      prices.forEach(function(p) {
+        freq[Math.floor(p * Math.pow(10, dec)) % 10]++;
+      });
+      var total = prices.length;
+      if (!ai.marketData[sym]) ai.marketData[sym] = { ticks:[], lastPrice:0, wins:0, trades:0 };
+      ai.marketData[sym].derivDigitFreq  = freq;
+      ai.marketData[sym].derivDigitTotal = total;
+      var loss8 = freq[8] + freq[9];
+      var loss1 = freq[0] + freq[1];
+      ai.marketData[sym].derivUnder8Pct = ((total - loss8) / total * 100).toFixed(1);
+      ai.marketData[sym].derivOver1Pct  = ((total - loss1) / total * 100).toFixed(1);
+      aiLog('📊 '+sym+' U8:'+ai.marketData[sym].derivUnder8Pct+'% O1:'+ai.marketData[sym].derivOver1Pct+'%','info');
+      ws.close();
+    }
+  };
+  ws.onerror = function() { ws.close(); };
+}
+
 // ── MARKET SCANNER ─────────────────────────────────────────
 
 function aiScanMarkets() {
+  // Fetch Deriv digit stats for all markets
+  ai.scanSymbols.forEach(function(sym) { aiFetchDigitStats(sym); });
   ai.scanSymbols.forEach(function(sym) {
     if (ai.scanWs[sym]) return; // already scanning
     var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
