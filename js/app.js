@@ -930,7 +930,7 @@ function startScanAll() {
 }
 
 // ─── TRADE PLACEMENT ───
-async function placeTrade(symbol, contractType) {
+async function placeTrade(symbol, contractType, barrier) {
   if (!state.bearerToken) {
     showToast('Please log in first');
     showLoginModal();
@@ -952,6 +952,7 @@ async function placeTrade(symbol, contractType) {
         duration: dur,
         duration_unit: 't',
         underlying_symbol: symbol,
+        ...(barrier !== undefined && barrier !== null ? { barrier: barrier } : {}),
       });
     },
     function(msg) {
