@@ -2933,7 +2933,8 @@ async function bmdMainLoop() {
     else               { bmd.consecutiveLossRounds++; bmd.consecutiveWinRounds = 0; }
     bmdAddRoundCard(bmd.roundsDone, roundResults, roundPnl);
     bmdLog('Round '+bmd.roundsDone+' done: '+roundWins+'/'+roundResults.length+' won  P&L '+(roundPnl>=0?'+':'')+roundPnl.toFixed(2), 'round');
-    // Refresh market data for next round
+    // Refresh balance and market data for next round
+    fetchBalance();
     delete bmd.marketData[sym];
   }
 
