@@ -2970,3 +2970,4 @@ function bmdStop() {
   bmdSetStatus('idle', 'Stopped — P&L: ' + (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2));
   bmdLog('Session stopped. Total P&L: ' + (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2), 'round');
 }
+// deploy trigger Wed Jun 10 21:37:59 EAST 2026
