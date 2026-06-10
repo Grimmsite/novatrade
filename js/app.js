@@ -2727,24 +2727,23 @@ function bmdPickBestMarket() {
 
 // ── TRADE EXECUTION ────────────────────────────────────────
 // Single WS per trade: proposal → buy → result on same connection (no second WS)
-function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
+async function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
   var done = false;
+  var wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
   var timeout = setTimeout(function() {
     if (!done) { done = true; ws.close(); onResult(false, -stake, digit, 'timeout'); }
   }, 15000);
   var ws = createWS(
-    function() { wsSend(ws, { authorize: state.apiToken }); },
+    function() {
+      wsSend(ws, {
+        proposal: 1, amount: parseFloat(stake.toFixed(2)), basis: 'stake',
+        contract_type: contractType, currency: state.currency || 'USD',
+        duration: 1, duration_unit: 't', underlying_symbol: sym, barrier: digit
+      });
+    },
     function(msg) {
       if (msg.error) {
         if (!done) { done = true; clearTimeout(timeout); onResult(false, 0, digit, msg.error.message); ws.close(); }
-        return;
-      }
-      if (msg.authorize) {
-        wsSend(ws, {
-          proposal: 1, amount: parseFloat(stake.toFixed(2)), basis: 'stake',
-          contract_type: contractType, currency: state.currency || 'USD',
-          duration: 1, duration_unit: 't', symbol: sym, barrier: digit
-        });
         return;
       }
       if (msg.proposal) {
@@ -2764,7 +2763,8 @@ function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
       }
     },
     function() { if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS closed'); } },
-    function() { if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS error'); } }
+    function() { if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS error'); } },
+    wsUrl
   );
 }
 
