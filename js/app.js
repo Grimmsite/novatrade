@@ -2660,10 +2660,16 @@ function bmdPickDigits(analysis, mode) {
     // Combined — sort by combinedRank ascending (0 = best match)
     pool = analysis.digitsCombined.slice().sort(function(a,b){ return a.combinedRank-b.combinedRank; });
   }
-  return {
-    matchDigits: pool.slice(0, 5),   // most frequent / lowest rank
-    diffDigits:  pool.slice(5)       // least frequent / highest rank
-  };
+  // Match: only digits appearing 13%+ (edge above random 10%)
+  // Differ: only digits appearing 7% or less (edge below random 10%)
+  var matchDigits = pool.slice(0, 5).filter(function(d) { return d.pct >= 13; });
+  var diffDigits  = pool.slice(5).filter(function(d) { return d.pct <= 7; });
+
+  // Fallback: if no digits meet threshold, take top/bottom 3 anyway
+  if (matchDigits.length === 0) matchDigits = pool.slice(0, 3);
+  if (diffDigits.length === 0)  diffDigits  = pool.slice(7);
+
+  return { matchDigits: matchDigits, diffDigits: diffDigits };
 }
 
 function bmdRenderFreqChart(sym, analysis) {
@@ -2722,6 +2728,8 @@ function bmdPickBestMarket() {
     var skew = top5.reduce(function(s,c){ return s + Math.abs(c.pct - 10); }, 0);
     if (skew > bestSkew) { bestSkew = skew; best = sym; }
   });
+  // Require minimum skew of 5% — flat markets have no edge
+  if (bestSkew < 5) { bmdLog('All markets flat (skew '+bestSkew.toFixed(1)+'%) — waiting', 'info'); return null; }
   return best;
 }
 
