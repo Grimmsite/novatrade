@@ -725,6 +725,7 @@ function createMarketCard(symbol) {
         <span class="eo-trade-payout" id="odd-pay-${symbol}">Payout AUD —</span>
       </button>
     </div>
+    <div id="trade-result-${symbol}" style="display:none;text-align:center;padding:6px;border-radius:6px;font-weight:600;font-size:14px;margin-top:6px"></div>
   `;
   return card;
 }
@@ -959,7 +960,21 @@ async function placeTrade(symbol, contractType, barrier) {
       if (msg.proposal) {
         wsSend(ws, { buy: msg.proposal.id, price: msg.proposal.ask_price });
       } else if (msg.buy) {
-        showToast('Trade placed! Contract: ' + msg.buy.contract_id);
+        showToast('Trade placed!');
+        wsSend(ws, { proposal_open_contract: 1, contract_id: msg.buy.contract_id, subscribe: 1 });
+      } else if (msg.proposal_open_contract && msg.proposal_open_contract.is_sold) {
+        var poc = msg.proposal_open_contract;
+        var won = poc.profit >= 0;
+        var resultEl = document.getElementById('trade-result-' + symbol);
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.background = won ? '#1a3a1a' : '#3a1a1a';
+          resultEl.style.color = won ? '#4caf50' : '#f44336';
+          resultEl.textContent = won
+            ? '✅ WIN  +' + parseFloat(poc.profit).toFixed(2)
+            : '❌ LOSS  ' + parseFloat(poc.profit).toFixed(2);
+          setTimeout(function() { if (resultEl) resultEl.style.display = 'none'; }, 4000);
+        }
         fetchBalance();
         ws.close();
       } else if (msg.error) {
