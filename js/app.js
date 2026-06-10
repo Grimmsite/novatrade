@@ -2506,3 +2506,435 @@ function dismissRisk() {
   var b = document.getElementById('riskBanner');
   if (b) { b.style.display = 'none'; updateBannerHeight(); }
 }
+
+// ═══════════════════════════════════════════════════════════
+// BULK MATCHES & DIFFERS ENGINE
+// ═══════════════════════════════════════════════════════════
+var bmd = {
+  running: false,
+  scanning: false,
+  sym: null,
+  scanWs: {},
+  marketData: {}, // sym -> { ticks[], digitFreq[], digitTotal, confidence[] }
+  digitWins: Array(10).fill(0),
+  digitLosses: Array(10).fill(0),
+  digitSkip: Array(10).fill(0), // consecutive losses per digit
+  pnl: 0,
+  trades: 0,
+  wins: 0,
+  losses: 0,
+  roundsDone: 0,
+  consecutiveLossRounds: 0,
+  consecutiveWinRounds: 0,
+  chartData: [],
+  timerInterval: null,
+  startTime: null,
+  startBalance: 0,
+  allSyms: ['R_10','R_25','R_50','R_75','R_100','1HZ10V','1HZ25V','1HZ50V','1HZ75V','1HZ100V']
+};
+
+function bmdLog(msg, type) {
+  var log = document.getElementById('bmd-log');
+  if (!log) return;
+  var color = type === 'win' ? '#4caf50' : type === 'loss' ? '#f44336' : type === 'round' ? '#c9a84c' : '#888';
+  var el = document.createElement('div');
+  el.style.cssText = 'padding:3px 0;border-bottom:1px solid #111;font-size:.75rem;color:'+color;
+  el.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  log.insertBefore(el, log.firstChild);
+  if (log.children.length > 200) log.removeChild(log.lastChild);
+}
+
+function bmdSetStatus(type, text) {
+  var dot = document.getElementById('bmdDot');
+  var txt = document.getElementById('bmdStatusText');
+  if (dot) { dot.className = 'ai-dot ' + type; }
+  if (txt) txt.textContent = text;
+}
+
+function bmdUpdateStats() {
+  var wr = bmd.trades > 0 ? Math.round(bmd.wins / bmd.trades * 100) : 0;
+  var pnlEl = document.getElementById('bmd_pnl');
+  if (pnlEl) { pnlEl.textContent = (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2); pnlEl.style.color = bmd.pnl >= 0 ? '#4caf50' : '#f44336'; }
+  var setEl = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+  setEl('bmd_rounds_done', bmd.roundsDone);
+  setEl('bmd_trades', bmd.trades);
+  setEl('bmd_wins', bmd.wins);
+  setEl('bmd_losses', bmd.losses);
+  setEl('bmd_winrate', wr + '%');
+  // chart
+  bmd.chartData.push(bmd.pnl);
+  if (bmd.chartData.length > 60) bmd.chartData.shift();
+  bmdDrawChart();
+}
+
+function bmdDrawChart() {
+  var canvas = document.getElementById('bmd_pnl_chart');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.offsetWidth || 240;
+  canvas.width = w; canvas.height = 70;
+  ctx.clearRect(0, 0, w, 70);
+  var data = bmd.chartData;
+  if (data.length < 2) return;
+  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+  if (max === min) { max += 1; min -= 1; }
+  var range = max - min;
+  var step = w / (data.length - 1);
+  ctx.beginPath();
+  data.forEach(function(v, i) {
+    var x = i * step, y = 70 - ((v - min) / range * 60 + 5);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = bmd.pnl >= 0 ? '#4caf50' : '#f44336';
+  ctx.lineWidth = 2; ctx.stroke();
+  var zeroY = 70 - ((0 - min) / range * 60 + 5);
+  ctx.beginPath(); ctx.moveTo(0, zeroY); ctx.lineTo(w, zeroY);
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+}
+
+// ── DIGIT FREQUENCY ANALYSIS ───────────────────────────────
+function bmdAnalyzeMarket(sym, prices, decimals) {
+  var freq = Array(10).fill(0);
+  var total = prices.length;
+  prices.forEach(function(p) {
+    freq[Math.floor(p * Math.pow(10, decimals)) % 10]++;
+  });
+
+  // Weighted confidence: full history 40%, last 500 35%, last 100 25%
+  var h500 = prices.slice(-500);
+  var h100 = prices.slice(-100);
+  var freq500 = Array(10).fill(0); h500.forEach(function(p){ freq500[Math.floor(p*Math.pow(10,decimals))%10]++; });
+  var freq100 = Array(10).fill(0); h100.forEach(function(p){ freq100[Math.floor(p*Math.pow(10,decimals))%10]++; });
+
+  var confidence = freq.map(function(f, d) {
+    var pctAll  = f / total * 100;
+    var pct500  = freq500[d] / h500.length * 100;
+    var pct100  = freq100[d] / h100.length * 100;
+    // Expected uniform = 10%. Score how far each digit deviates
+    var scoreMatch = pctAll * 0.4 + pct500 * 0.35 + pct100 * 0.25;
+    var scoreDiff  = (100 - pctAll) * 0.4 + (100 - pct500) * 0.35 + (100 - pct100) * 0.25;
+    // Penalise digits that were hot but cooling (dropped in last 100 vs full history)
+    var cooling = pctAll > 12 && pct100 < pctAll * 0.7;
+    return { d: d, pctAll: pctAll, scoreMatch: scoreMatch, scoreDiff: scoreDiff, cooling: cooling };
+  });
+
+  return { freq: freq, total: total, confidence: confidence };
+}
+
+function bmdPickDigits(analysis, minConf) {
+  var conf = analysis.confidence;
+
+  // Sort by match score descending — top 5 are match candidates
+  var matchRanked = conf.slice().sort(function(a, b) { return b.scoreMatch - a.scoreMatch; });
+  // Sort by differ score descending — top 5 are differ candidates
+  var diffRanked  = conf.slice().sort(function(a, b) { return b.scoreDiff - a.scoreDiff; });
+
+  var matchDigits = matchRanked.slice(0, 5).filter(function(c) {
+    // Skip cooling digits and digits on 2-round losing streak
+    return !c.cooling && bmd.digitSkip[c.d] < 2 && c.scoreMatch >= minConf;
+  });
+  var diffDigits = diffRanked.slice(0, 5).filter(function(c) {
+    return bmd.digitSkip[c.d] < 2 && c.scoreDiff >= minConf;
+  });
+
+  return { matchDigits: matchDigits, diffDigits: diffDigits };
+}
+
+function bmdRenderFreqChart(sym, analysis) {
+  var el = document.getElementById('bmd_freq_chart');
+  if (!el) return;
+  var conf = analysis.confidence;
+  var matchTop5 = conf.slice().sort(function(a,b){ return b.scoreMatch-a.scoreMatch; }).slice(0,5).map(function(c){ return c.d; });
+  var diffTop5  = conf.slice().sort(function(a,b){ return b.scoreDiff-a.scoreDiff;  }).slice(0,5).map(function(c){ return c.d; });
+  var maxPct = Math.max.apply(null, conf.map(function(c){ return c.pctAll; }));
+  el.innerHTML = conf.map(function(c) {
+    var cls = matchTop5.indexOf(c.d) !== -1 ? 'match' : diffTop5.indexOf(c.d) !== -1 ? 'diff' : 'neutral';
+    var h = Math.max(4, Math.round(c.pctAll / maxPct * 80));
+    return '<div class="bmd-freq-bar-wrap">'+
+      '<div class="bmd-freq-pct">'+c.pctAll.toFixed(1)+'%</div>'+
+      '<div class="bmd-freq-bar '+cls+'" style="height:'+h+'px"></div>'+
+      '<div class="bmd-freq-label">'+c.d+'</div>'+
+      '</div>';
+  }).join('');
+  var lbl = document.getElementById('bmd_market_label');
+  if (lbl) lbl.textContent = sym + ' — ' + analysis.total + ' ticks';
+}
+
+// ── MARKET SCANNER & AUTO-PICK ─────────────────────────────
+function bmdScanAll(callback) {
+  var syms = bmd.allSyms;
+  var done = 0;
+  bmdSetStatus('scanning', 'Scanning all markets...');
+  syms.forEach(function(sym) {
+    var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    ws.onopen = function() {
+      ws.send(JSON.stringify({ ticks_history: sym, count: 1000, end: 'latest', style: 'ticks' }));
+    };
+    ws.onmessage = function(e) {
+      var msg = JSON.parse(e.data);
+      if (msg.history && msg.history.prices) {
+        var prices = msg.history.prices.map(Number);
+        var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+        var analysis = bmdAnalyzeMarket(sym, prices, dec);
+        bmd.marketData[sym] = { prices: prices, decimals: dec, analysis: analysis };
+        ws.close();
+        done++;
+        if (done === syms.length) callback();
+      }
+    };
+    ws.onerror = function() { ws.close(); done++; if (done === syms.length) callback(); };
+  });
+}
+
+function bmdPickBestMarket() {
+  // Best market = highest combined skew (sum of top 5 match scores deviation from 10%)
+  var best = null, bestSkew = -1;
+  bmd.allSyms.forEach(function(sym) {
+    var d = bmd.marketData[sym];
+    if (!d) return;
+    var conf = d.analysis.confidence;
+    var matchTop5 = conf.slice().sort(function(a,b){ return b.scoreMatch-a.scoreMatch; }).slice(0,5);
+    var skew = matchTop5.reduce(function(s,c){ return s + Math.abs(c.pctAll - 10); }, 0);
+    if (skew > bestSkew) { bestSkew = skew; best = sym; }
+  });
+  return best;
+}
+
+// ── TRADE EXECUTION ────────────────────────────────────────
+function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
+  var wsUrl = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
+  var ws = new WebSocket(wsUrl);
+  ws.onopen = function() {
+    ws.send(JSON.stringify({
+      proposal: 1, amount: parseFloat(stake.toFixed(2)), basis: 'stake',
+      contract_type: contractType, currency: state.currency || 'USD',
+      duration: 1, duration_unit: 't', underlying_symbol: sym, barrier: digit
+    }));
+  };
+  ws.onmessage = function(e) {
+    var msg = JSON.parse(e.data);
+    if (msg.error) { onResult(false, 0, digit, msg.error.message); ws.close(); return; }
+    if (msg.proposal) {
+      ws.send(JSON.stringify({ buy: msg.proposal.id, price: parseFloat(stake.toFixed(2)) }));
+    }
+    if (msg.buy) {
+      var contractId = msg.buy.contract_id;
+      // Poll for result
+      var pollWs = new WebSocket(wsUrl);
+      pollWs.onopen = function() {
+        pollWs.send(JSON.stringify({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 }));
+      };
+      pollWs.onmessage = function(ev) {
+        var r = JSON.parse(ev.data);
+        if (r.proposal_open_contract && r.proposal_open_contract.is_sold) {
+          var profit = parseFloat(r.proposal_open_contract.profit);
+          onResult(profit >= 0, profit, digit, null);
+          pollWs.close();
+        }
+      };
+      pollWs.onerror = function() { pollWs.close(); onResult(false, -stake, digit, 'WS error'); };
+      ws.close();
+    }
+  };
+  ws.onerror = function() { ws.close(); onResult(false, -stake, digit, 'WS error'); };
+}
+
+// ── ROUND EXECUTION ────────────────────────────────────────
+async function bmdRunRound(sym, contractType, digits, stake) {
+  return new Promise(function(resolve) {
+    var results = [];
+    var pending = digits.length;
+    if (pending === 0) { resolve([]); return; }
+
+    digits.forEach(function(digitConf) {
+      var d = digitConf.d;
+      bmdPlaceTrade(sym, contractType, d, stake, function(won, profit, digit, err) {
+        if (err) bmdLog('Trade error digit '+digit+': '+err, 'info');
+        results.push({ digit: digit, won: won, profit: profit });
+        // Update per-digit stats
+        if (won) { bmd.digitWins[digit]++; bmd.digitSkip[digit] = Math.max(0, bmd.digitSkip[digit] - 1); }
+        else      { bmd.digitLosses[digit]++; bmd.digitSkip[digit]++; }
+        bmd.trades++;
+        if (won) bmd.wins++; else bmd.losses++;
+        bmd.pnl += profit;
+        bmdUpdateDigitCard(digit);
+        bmdUpdateStats();
+        pending--;
+        if (pending === 0) resolve(results);
+      });
+    });
+  });
+}
+
+function bmdUpdateDigitCard(d) {
+  var w = document.getElementById('bmd_dw_' + d);
+  var l = document.getElementById('bmd_dl_' + d);
+  var card = document.getElementById('bmd_dperf_' + d);
+  if (w) w.textContent = bmd.digitWins[d] + 'W';
+  if (l) l.textContent = bmd.digitLosses[d] + 'L';
+  if (card) {
+    card.classList.remove('hot', 'cold');
+    if (bmd.digitWins[d] > bmd.digitLosses[d]) card.classList.add('hot');
+    else if (bmd.digitLosses[d] > bmd.digitWins[d]) card.classList.add('cold');
+  }
+}
+
+function bmdAddRoundCard(roundNum, results, roundPnl) {
+  var log = document.getElementById('bmd_rounds_log');
+  if (!log) return;
+  var icons = results.map(function(r) { return r.won ? '✅' : '❌'; }).join('');
+  var card = document.createElement('div');
+  card.className = 'bmd-round-card';
+  var pnlClass = roundPnl >= 0 ? 'pos' : 'neg';
+  card.innerHTML = '<span class="bmd-round-label">Round ' + roundNum + '</span>' +
+    '<span class="bmd-round-results">' + icons + '</span>' +
+    '<span class="bmd-round-pnl ' + pnlClass + '">' + (roundPnl >= 0 ? '+' : '') + roundPnl.toFixed(2) + '</span>';
+  log.insertBefore(card, log.firstChild);
+  if (log.children.length > 30) log.removeChild(log.lastChild);
+}
+
+// ── MAIN LOOP ──────────────────────────────────────────────
+async function bmdMainLoop() {
+  if (!bmd.running) return;
+
+  var maxRounds   = parseInt(document.getElementById('bmd_rounds').value) || 10;
+  var stopLossR   = parseInt(document.getElementById('bmd_stop_loss_rounds').value) || 3;
+  var tpRounds    = parseInt(document.getElementById('bmd_tp_rounds').value) || 5;
+  var stake       = parseFloat(document.getElementById('bmd_stake').value) || 1;
+  var minConf     = parseFloat(document.getElementById('bmd_min_conf').value) || 60;
+  var contractTypeSel = document.getElementById('bmd_type').value;
+  var balProtect  = parseFloat(document.getElementById('bmd_bal_protect').value) || 20;
+
+  if (bmd.roundsDone >= maxRounds) { bmdStop(); bmdLog('Max rounds reached', 'round'); return; }
+  if (bmd.consecutiveLossRounds >= stopLossR) { bmdStop(); bmdLog('Stop: ' + stopLossR + ' consecutive losing rounds', 'round'); return; }
+  if (bmd.consecutiveWinRounds >= tpRounds)  { bmdStop(); bmdLog('Take profit: ' + tpRounds + ' consecutive winning rounds', 'round'); return; }
+
+  // Balance protection
+  if (bmd.startBalance > 0) {
+    var balEl = document.getElementById('heroBalance');
+    var curBal = balEl ? parseFloat(balEl.textContent) : 0;
+    if (curBal > 0 && curBal < bmd.startBalance * (1 - balProtect / 100)) {
+      bmdStop(); bmdLog('Balance protection triggered', 'round'); return;
+    }
+  }
+
+  // Resolve symbol
+  var sym = document.getElementById('bmd_sym').value;
+  if (sym === 'auto') {
+    bmdSetStatus('scanning', 'Scanning all markets for best signal...');
+    await new Promise(function(res) { bmdScanAll(res); });
+    sym = bmdPickBestMarket();
+    if (!sym) { bmdLog('No market data — retrying in 3s', 'info'); setTimeout(bmdMainLoop, 3000); return; }
+    bmdLog('Auto-picked: ' + sym, 'info');
+  } else {
+    // Fetch fresh data for selected symbol
+    if (!bmd.marketData[sym]) {
+      bmdSetStatus('scanning', 'Fetching ' + sym + ' data...');
+      await new Promise(function(res) {
+        var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+        ws.onopen = function() { ws.send(JSON.stringify({ ticks_history: sym, count: 1000, end: 'latest', style: 'ticks' })); };
+        ws.onmessage = function(e) {
+          var msg = JSON.parse(e.data);
+          if (msg.history && msg.history.prices) {
+            var prices = msg.history.prices.map(Number);
+            var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+            var analysis = bmdAnalyzeMarket(sym, prices, dec);
+            bmd.marketData[sym] = { prices: prices, decimals: dec, analysis: analysis };
+            ws.close(); res();
+          }
+        };
+        ws.onerror = function() { ws.close(); res(); };
+      });
+    }
+  }
+
+  var d = bmd.marketData[sym];
+  if (!d) { bmdLog('No data for ' + sym, 'info'); setTimeout(bmdMainLoop, 2000); return; }
+
+  bmdRenderFreqChart(sym, d.analysis);
+
+  var picked = bmdPickDigits(d.analysis, minConf);
+  bmd.sym = sym;
+
+  var roundResults = [];
+  var roundPnl = 0;
+
+  if (contractTypeSel === 'DIGITMATCH' || contractTypeSel === 'both') {
+    if (picked.matchDigits.length === 0) { bmdLog('No match candidates above confidence threshold', 'info'); }
+    else {
+      bmdSetStatus('running', 'Placing ' + picked.matchDigits.length + ' MATCH trades on ' + sym);
+      bmdLog('Round '+(bmd.roundsDone+1)+' MATCH: digits '+picked.matchDigits.map(function(c){return c.d;}).join(','), 'round');
+      var res = await bmdRunRound(sym, 'DIGITMATCH', picked.matchDigits, stake);
+      roundResults = roundResults.concat(res);
+    }
+  }
+  if (contractTypeSel === 'DIGITDIFF' || contractTypeSel === 'both') {
+    if (picked.diffDigits.length === 0) { bmdLog('No differ candidates above confidence threshold', 'info'); }
+    else {
+      bmdSetStatus('running', 'Placing ' + picked.diffDigits.length + ' DIFFER trades on ' + sym);
+      bmdLog('Round '+(bmd.roundsDone+1)+' DIFFER: digits '+picked.diffDigits.map(function(c){return c.d;}).join(','), 'round');
+      var res2 = await bmdRunRound(sym, 'DIGITDIFF', picked.diffDigits, stake);
+      roundResults = roundResults.concat(res2);
+    }
+  }
+
+  if (roundResults.length > 0) {
+    roundPnl = roundResults.reduce(function(s, r) { return s + r.profit; }, 0);
+    var roundWins = roundResults.filter(function(r){ return r.won; }).length;
+    bmd.roundsDone++;
+    if (roundPnl >= 0) { bmd.consecutiveWinRounds++; bmd.consecutiveLossRounds = 0; }
+    else               { bmd.consecutiveLossRounds++; bmd.consecutiveWinRounds = 0; }
+    bmdAddRoundCard(bmd.roundsDone, roundResults, roundPnl);
+    bmdLog('Round '+bmd.roundsDone+' done: '+roundWins+'/'+roundResults.length+' won  P&L '+(roundPnl>=0?'+':'')+roundPnl.toFixed(2), 'round');
+    // Refresh market data for next round
+    delete bmd.marketData[sym];
+  }
+
+  if (bmd.running) setTimeout(bmdMainLoop, 500);
+}
+
+// ── START / STOP ───────────────────────────────────────────
+async function bmdStart() {
+  if (!state.bearerToken || !state.accountId) { showToast('Please log in first'); return; }
+  if (bmd.running) return;
+
+  // Reset state
+  bmd.running = true;
+  bmd.pnl = 0; bmd.trades = 0; bmd.wins = 0; bmd.losses = 0;
+  bmd.roundsDone = 0; bmd.consecutiveLossRounds = 0; bmd.consecutiveWinRounds = 0;
+  bmd.digitWins = Array(10).fill(0); bmd.digitLosses = Array(10).fill(0);
+  bmd.digitSkip = Array(10).fill(0);
+  bmd.chartData = []; bmd.marketData = {};
+
+  // Reset digit cards
+  for (var d = 0; d <= 9; d++) { bmdUpdateDigitCard(d); }
+  document.getElementById('bmd_rounds_log').innerHTML = '';
+  document.getElementById('bmd-log').innerHTML = '';
+
+  var balEl = document.getElementById('heroBalance');
+  bmd.startBalance = balEl ? parseFloat(balEl.textContent) : 0;
+
+  document.getElementById('bmdStartBtn').style.display = 'none';
+  document.getElementById('bmdStopBtn').style.display = '';
+  bmdSetStatus('scanning', 'Starting...');
+
+  bmd.startTime = Date.now();
+  bmd.timerInterval = setInterval(function() {
+    var el = document.getElementById('bmd_timer');
+    if (!el) return;
+    var s = Math.floor((Date.now() - bmd.startTime) / 1000);
+    el.textContent = Math.floor(s/60) + 'm ' + (s%60) + 's';
+  }, 1000);
+
+  bmdLog('Session started', 'round');
+  bmdMainLoop();
+}
+
+function bmdStop() {
+  bmd.running = false;
+  if (bmd.timerInterval) { clearInterval(bmd.timerInterval); bmd.timerInterval = null; }
+  document.getElementById('bmdStartBtn').style.display = '';
+  document.getElementById('bmdStopBtn').style.display = 'none';
+  bmdSetStatus('idle', 'Stopped — P&L: ' + (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2));
+  bmdLog('Session stopped. Total P&L: ' + (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2), 'round');
+}

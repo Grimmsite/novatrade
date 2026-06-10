@@ -24,6 +24,7 @@
     <button class="nav-tab" data-page="bot-builder" onclick="navigate('bot-builder')"><span class="nav-icon">⚙</span> Bot Builder</button>
     <button class="nav-tab" data-page="ai-scalper" onclick="navigate('ai-scalper')"><span class="nav-icon">🧠</span> AI Scalper</button>
     <button class="nav-tab" data-page="analysis" onclick="navigate('analysis')"><span class="nav-icon">◎</span> Analysis Tools</button>
+    <button class="nav-tab" data-page="bulk-md" onclick="navigate('bulk-md')"><span class="nav-icon">⚡</span> Bulk M&D</button>
   </nav>
   <div class="nav-right">
     <button class="btn-secondary" onclick="showApiModal()" id="apiTokenBtn">API Token</button>
@@ -469,6 +470,101 @@
         <div class="ai-right">
           <div class="ai-section-title">Live Trade Log</div>
           <div class="ai-log" id="ai-log"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="page-bulk-md" class="page">
+    <div class="bmd-wrap">
+      <div class="bmd-header">
+        <div class="bmd-title">⚡ Bulk Matches &amp; Differs</div>
+        <div class="bmd-subtitle">AI scans digit frequency across markets — fires 5 trades simultaneously on strongest signals</div>
+        <div class="ai-status-bar">
+          <span class="ai-dot idle" id="bmdDot"></span>
+          <span id="bmdStatusText">Idle — configure and start</span>
+        </div>
+      </div>
+      <div class="bmd-body">
+        <!-- LEFT: controls -->
+        <div class="bmd-left">
+          <div class="ai-section-title">Market</div>
+          <div class="ai-field">
+            <label>Symbol</label>
+            <select id="bmd_sym" style="width:100%;background:#111;border:1px solid #222;color:#fff;border-radius:6px;padding:6px 10px;font-size:.85rem">
+              <option value="auto">🤖 Auto-pick best market</option>
+              <option value="R_10">Volatility 10</option>
+              <option value="R_25">Volatility 25</option>
+              <option value="R_50">Volatility 50</option>
+              <option value="R_75">Volatility 75</option>
+              <option value="R_100">Volatility 100</option>
+              <option value="1HZ10V">Vol 10 (1s)</option>
+              <option value="1HZ25V">Vol 25 (1s)</option>
+              <option value="1HZ50V">Vol 50 (1s)</option>
+              <option value="1HZ75V">Vol 75 (1s)</option>
+              <option value="1HZ100V">Vol 100 (1s)</option>
+            </select>
+          </div>
+          <div class="ai-section-title" style="margin-top:14px">Trade Settings</div>
+          <div class="ai-field"><label>Stake per digit ($)</label><input type="number" id="bmd_stake" value="1" min="0.35" step="0.01"></div>
+          <div class="ai-field"><label>Contract Type</label>
+            <select id="bmd_type" style="width:100%;background:#111;border:1px solid #222;color:#fff;border-radius:6px;padding:6px 10px;font-size:.85rem">
+              <option value="DIGITMATCH">Digit Match (top 5 frequent)</option>
+              <option value="DIGITDIFF">Digit Differ (top 5 infrequent)</option>
+              <option value="both">Both simultaneously</option>
+            </select>
+          </div>
+          <div class="ai-field"><label>Rounds</label><input type="number" id="bmd_rounds" value="10" min="1" max="200" title="Number of 5-trade rounds to run"></div>
+          <div class="ai-field"><label>Stop after losing rounds</label><input type="number" id="bmd_stop_loss_rounds" value="3" min="1" max="10"></div>
+          <div class="ai-field"><label>Take profit after winning rounds</label><input type="number" id="bmd_tp_rounds" value="5" min="1" max="50"></div>
+          <div class="ai-field"><label>Balance Protection (%)</label><input type="number" id="bmd_bal_protect" value="20" min="5" max="50"></div>
+          <div class="ai-field"><label>Min digit confidence (%)</label><input type="number" id="bmd_min_conf" value="60" min="40" max="95" title="Only trade digits above this confidence threshold"></div>
+          <div class="ai-btn-row">
+            <button class="ai-btn-start" id="bmdStartBtn" onclick="bmdStart()">▶ Start</button>
+            <button class="ai-btn-stop" id="bmdStopBtn" onclick="bmdStop()" style="display:none">■ Stop</button>
+          </div>
+          <div class="ai-section-title" style="margin-top:18px">Session Stats <span id="bmd_timer" style="font-size:.75rem;color:#888;float:right"></span></div>
+          <div class="ai-stats-grid">
+            <div class="ai-stat"><div class="ai-stat-val" id="bmd_pnl">$0.00</div><div class="ai-stat-lbl">P&amp;L</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="bmd_rounds_done">0</div><div class="ai-stat-lbl">Rounds</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="bmd_trades">0</div><div class="ai-stat-lbl">Trades</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="bmd_wins">0</div><div class="ai-stat-lbl">Wins</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="bmd_losses">0</div><div class="ai-stat-lbl">Losses</div></div>
+            <div class="ai-stat"><div class="ai-stat-val" id="bmd_winrate">0%</div><div class="ai-stat-lbl">Win Rate</div></div>
+          </div>
+          <canvas id="bmd_pnl_chart" height="70" style="width:100%;margin-top:10px;border-radius:6px;background:#0d0d0d"></canvas>
+        </div>
+        <!-- RIGHT: analysis + rounds -->
+        <div class="bmd-right">
+          <!-- Digit frequency bar chart -->
+          <div class="bmd-panel">
+            <div class="ai-section-title">Digit Frequency Analysis <span id="bmd_market_label" style="color:#c9a84c;font-size:.75rem;float:right;text-transform:none"></span></div>
+            <div id="bmd_freq_chart" class="bmd-freq-chart">
+              <div class="bmd-freq-loading">Waiting for scan...</div>
+            </div>
+            <div class="bmd-freq-legend">
+              <span class="bmd-legend-match">■ Match candidates</span>
+              <span class="bmd-legend-diff">■ Differ candidates</span>
+              <span class="bmd-legend-neutral">■ Neutral</span>
+            </div>
+          </div>
+          <!-- Per-digit performance tracker -->
+          <div class="bmd-panel" style="margin-top:12px">
+            <div class="ai-section-title">Per-Digit Performance</div>
+            <div id="bmd_digit_perf" class="bmd-digit-perf">
+              <div class="bmd-digit-card" id="bmd_dperf_0"><div class="bmd-digit-num">0</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_0">0W</span><span class="bmd-dl" id="bmd_dl_0">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_1"><div class="bmd-digit-num">1</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_1">0W</span><span class="bmd-dl" id="bmd_dl_1">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_2"><div class="bmd-digit-num">2</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_2">0W</span><span class="bmd-dl" id="bmd_dl_2">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_3"><div class="bmd-digit-num">3</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_3">0W</span><span class="bmd-dl" id="bmd_dl_3">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_4"><div class="bmd-digit-num">4</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_4">0W</span><span class="bmd-dl" id="bmd_dl_4">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_5"><div class="bmd-digit-num">5</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_5">0W</span><span class="bmd-dl" id="bmd_dl_5">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_6"><div class="bmd-digit-num">6</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_6">0W</span><span class="bmd-dl" id="bmd_dl_6">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_7"><div class="bmd-digit-num">7</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_7">0W</span><span class="bmd-dl" id="bmd_dl_7">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_8"><div class="bmd-digit-num">8</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_8">0W</span><span class="bmd-dl" id="bmd_dl_8">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_9"><div class="bmd-digit-num">9</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_9">0W</span><span class="bmd-dl" id="bmd_dl_9">0L</span></div></div>
+            </div>
+          </div>
+          <!-- Round history cards -->
+          <div class="bmd-panel" style="margin-top:12px">
+            <div class="ai-section-title">Round History</div>
+            <div id="bmd_rounds_log" class="bmd-rounds-log"></div>
+          </div>
+          <!-- Live log -->
+          <div class="bmd-panel" style="margin-top:12px;flex:1">
+            <div class="ai-section-title">Live Log</div>
+            <div class="ai-log" id="bmd-log" style="max-height:180px"></div>
+          </div>
         </div>
       </div>
     </div>
