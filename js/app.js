@@ -1972,13 +1972,15 @@ function aiAnalyzeDigitFreq(ticks, decimals, sym) {
     });
     total = digits.length;
   }
-  var recent = digits.slice(-20);
-  var veryRecent = digits.slice(-10);
+  // Always use raw ticks for recent/veryRecent — never the reconstructed sorted array
+  var rawTicks = ticks.slice(-Math.min(ticks.length, 1000));
+  var rawRecent     = rawTicks.slice(-20).map(function(p){ return Math.floor(p * Math.pow(10, decimals||2)) % 10; });
+  var rawVeryRecent = rawTicks.slice(-10).map(function(p){ return Math.floor(p * Math.pow(10, decimals||2)) % 10; });
 
   // DIGITUNDER 8: loses when digit >= 8
-  var loss8_all    = digits.filter(function(d){ return d >= 8; }).length;
-  var loss8_rec    = recent.filter(function(d){ return d >= 8; }).length;
-  var loss8_vrec   = veryRecent.filter(function(d){ return d >= 8; }).length;
+  var loss8_all  = digits.filter(function(d){ return d >= 8; }).length;
+  var loss8_rec  = rawRecent.filter(function(d){ return d >= 8; }).length;
+  var loss8_vrec = rawVeryRecent.filter(function(d){ return d >= 8; }).length;
   var under8Conf = Math.min(93,
     ((total - loss8_all) / total * 100) * 0.4 +
     ((20 - loss8_rec)    / 20    * 100) * 0.35 +
@@ -1986,9 +1988,9 @@ function aiAnalyzeDigitFreq(ticks, decimals, sym) {
   );
 
   // DIGITOVER 1: loses when digit <= 1
-  var loss1_all    = digits.filter(function(d){ return d <= 1; }).length;
-  var loss1_rec    = recent.filter(function(d){ return d <= 1; }).length;
-  var loss1_vrec   = veryRecent.filter(function(d){ return d <= 1; }).length;
+  var loss1_all  = digits.filter(function(d){ return d <= 1; }).length;
+  var loss1_rec  = rawRecent.filter(function(d){ return d <= 1; }).length;
+  var loss1_vrec = rawVeryRecent.filter(function(d){ return d <= 1; }).length;
   var over1Conf = Math.min(93,
     ((total - loss1_all) / total * 100) * 0.4 +
     ((20 - loss1_rec)    / 20    * 100) * 0.35 +
