@@ -1888,7 +1888,7 @@ var ai = {
   timerInterval:null,
   chartData:[],   // P&L history for chart
   startBalance:0, // balance at session start
-  statsRefreshInterval:null // digit stats refresh timer
+  statsRefreshInterval:null, // digit stats refresh timer
   // Pattern memory: per symbol per contract type, track last 200 outcomes
   memory:{}, // sym -> { under8:{outcomes:[], streak:0}, over1:{outcomes:[], streak:0} }
   // Volatility tracker
@@ -1946,8 +1946,6 @@ function aiUpdateSignals(freq, pat, mom) {
   var m = document.getElementById('ai_sig_mom'); if(m) m.style.width=mom+'%';
   var mp = document.getElementById('ai_sig_mom_pct'); if(mp) mp.textContent=mom+'%';
 }
-
-// ── ANALYSIS ENGINE ────────────────────────────────────────
 
 // ══ WORLD CLASS AI ANALYSIS ENGINE ════════════════════════
 
@@ -2080,9 +2078,10 @@ function aiPickBestSignal(ticks, decimals, sym) {
   // Both under8 and over1 get a weighted score, pick the winner
   function scoreFor(ct) {
     var scores = [], weights = [];
-    if (freqSig) { scores.push(freqSig.ct === ct ? freqSig.confidence : 100 - freqSig.confidence); weights.push(0.40); }
-    if (patSig)  { scores.push(patSig.ct  === ct ? patSig.confidence  : 100 - patSig.confidence);  weights.push(0.35); }
-    if (momSig)  { scores.push(momSig.ct  === ct ? momSig.confidence  : 100 - momSig.confidence);  weights.push(0.25); }
+    // If layer agrees: use its confidence. If disagrees: use inverse as penalty. If null: skip.
+    if (freqSig) { scores.push(freqSig.ct === ct ? freqSig.confidence : Math.max(0, 100 - freqSig.confidence - 30)); weights.push(0.40); }
+    if (patSig)  { scores.push(patSig.ct  === ct ? patSig.confidence  : Math.max(0, 100 - patSig.confidence  - 30)); weights.push(0.35); }
+    if (momSig)  { scores.push(momSig.ct  === ct ? momSig.confidence  : Math.max(0, 100 - momSig.confidence  - 30)); weights.push(0.25); }
     if (!scores.length) return 0;
     var totalW = weights.reduce(function(a,b){return a+b;},0);
     return scores.reduce(function(sum,s,i){return sum+s*weights[i];},0) / totalW;
@@ -2134,16 +2133,12 @@ function aiFetchDigitStats(sym) {
 // ── MARKET SCANNER ─────────────────────────────────────────
 
 function aiScanMarkets() {
-  // Fetch Deriv digit stats for all markets
-  ai.scanSymbols.forEach(function(sym) { aiFetchDigitStats(sym); });
   ai.scanSymbols.forEach(function(sym) {
     if (ai.scanWs[sym]) return; // already scanning
     var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
     ws.onopen = function() {
       ws.send(JSON.stringify({ ticks_history:sym, count:1000, end:'latest', style:'ticks' }));
-      ws.send(JSON.stringify({ ticks_history:sym, count:1000, end:'latest', style:'ticks', granularity:0 }));
       ws.send(JSON.stringify({ ticks:sym, subscribe:1 }));
-      ws.send(JSON.stringify({ proposal:1, amount:1, basis:'stake', contract_type:'DIGITUNDER', currency:'USD', duration:1, duration_unit:'t', underlying_symbol:sym, barrier:8 }));
     };
     ws.onmessage = function(e) {
       var msg = JSON.parse(e.data);
