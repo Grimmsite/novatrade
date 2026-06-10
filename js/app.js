@@ -2048,12 +2048,13 @@ function aiPickBestSignal(ticks, decimals, sym) {
   // Weighted consensus: freq=40%, pattern=35%, momentum=25%
   // Both under8 and over1 get a weighted score, pick the winner
   function scoreFor(ct) {
-    var f = freqSig && freqSig.ct === ct ? freqSig.confidence : 0;
-    var p = patSig  && patSig.ct  === ct ? patSig.confidence  : 0;
-    var m = momSig  && momSig.ct  === ct ? momSig.confidence  : 0;
-    // If a layer has no signal, use neutral 50
-    if (!freqSig) f = 50; if (!patSig) p = 50; if (!momSig) m = 50;
-    return f*0.40 + p*0.35 + m*0.25;
+    var scores = [], weights = [];
+    if (freqSig) { scores.push(freqSig.ct === ct ? freqSig.confidence : 100 - freqSig.confidence); weights.push(0.40); }
+    if (patSig)  { scores.push(patSig.ct  === ct ? patSig.confidence  : 100 - patSig.confidence);  weights.push(0.35); }
+    if (momSig)  { scores.push(momSig.ct  === ct ? momSig.confidence  : 100 - momSig.confidence);  weights.push(0.25); }
+    if (!scores.length) return 0;
+    var totalW = weights.reduce(function(a,b){return a+b;},0);
+    return scores.reduce(function(sum,s,i){return sum+s*weights[i];},0) / totalW;
   }
   var under8Score = scoreFor('DIGITUNDER');
   var over1Score  = scoreFor('DIGITOVER');
@@ -2062,7 +2063,7 @@ function aiPickBestSignal(ticks, decimals, sym) {
   var bestConf    = Math.max(under8Score, over1Score);
 
   // Require minimum confidence threshold
-  var thresh = ai.cfg.conf || 65;
+  var thresh = Math.max(ai.cfg.conf || 65, 75);
   if (bestConf < thresh) return null;
 
   var best = { ct: bestCt, barrier: bestBarrier, confidence: bestConf };
@@ -2184,7 +2185,7 @@ async function aiTradeLoop() {
   ai.currentSymbol = pick.sym;
   ai.currentCt     = pick.sig.ct;
   var mEl = document.getElementById('ai_market_display');
-  if (mEl) mEl.textContent = pick.sym + ' — ' + pick.sig.ct + ' (' + Math.round(pick.sig.score) + '% score)';
+  if (mEl) mEl.textContent = pick.sym + ' — ' + pick.sig.ct + ' (' + Math.round(pick.score) + '% score)';
   ai._tradeStart = Date.now();
   aiLog('Signal: '+pick.sym+' | '+pick.sig.ct+(pick.sig.barrier!=null?' barrier:'+pick.sig.barrier:'')+' | conf:'+Math.round(pick.sig.confidence)+'%','info');
 
@@ -2260,6 +2261,7 @@ function aiHandleMsg(msg, pick) {
     }
     aiUpdateStats();
     if (ai.ws) { try{ai.ws.close();}catch(e){} ai.ws=null; }
+    ai.wsUrl=null; // refresh wsUrl each trade
     setTimeout(function(){if(ai.running)aiTradeLoop();},200);
   }
 }
