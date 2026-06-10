@@ -2736,7 +2736,7 @@ function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
   }, 15000);
   ws.onopen = function() {
     // Authorize first — required before any trade proposal
-    ws.send(JSON.stringify({ authorize: state.bearerToken }));
+    ws.send(JSON.stringify({ authorize: state.apiToken }));
   };
   ws.onmessage = function(e) {
     var msg = JSON.parse(e.data);
