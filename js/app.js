@@ -2665,10 +2665,8 @@ function bmdAnalyzeMarket(sym, prices, decimals) {
 function bmdPickDigits(analysis, minConf) {
   var conf = analysis.confidence;
 
-  // Entropy gate: if market is too uniform, no real edge exists — skip entirely
-  if (analysis.entropyRatio > 0.998) {
-    return { matchDigits: [], diffDigits: [], reason: 'entropy' };
-  }
+  // Entropy gate: log only, do not block
+  var entropyWarning = analysis.entropyRatio > 0.998;
 
   // Adaptive confidence: tighten after losing rounds, relax after winning
   var adaptiveConf = minConf + (bmd.consecutiveLossRounds * 1) - (bmd.consecutiveWinRounds * 1);
