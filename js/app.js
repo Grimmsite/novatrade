@@ -2754,9 +2754,14 @@ function bmdPickBestMarket() {
 }
 
 // ── TRADE EXECUTION ────────────────────────────────────────
+// Single WS per trade: proposal → buy → result on same connection (no second WS)
 function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
   var wsUrl = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
   var ws = new WebSocket(wsUrl);
+  var done = false;
+  var timeout = setTimeout(function() {
+    if (!done) { done = true; ws.close(); onResult(false, -stake, digit, 'timeout'); }
+  }, 15000);
   ws.onopen = function() {
     ws.send(JSON.stringify({
       proposal: 1, amount: parseFloat(stake.toFixed(2)), basis: 'stake',
@@ -2766,30 +2771,35 @@ function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
   };
   ws.onmessage = function(e) {
     var msg = JSON.parse(e.data);
-    if (msg.error) { onResult(false, 0, digit, msg.error.message); ws.close(); return; }
+    if (msg.error) {
+      if (!done) { done = true; clearTimeout(timeout); onResult(false, 0, digit, msg.error.message); ws.close(); }
+      return;
+    }
     if (msg.proposal) {
+      // Buy immediately on same WS — no second connection
       ws.send(JSON.stringify({ buy: msg.proposal.id, price: parseFloat(stake.toFixed(2)) }));
     }
     if (msg.buy) {
-      var contractId = msg.buy.contract_id;
-      // Poll for result
-      var pollWs = new WebSocket(wsUrl);
-      pollWs.onopen = function() {
-        pollWs.send(JSON.stringify({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 }));
-      };
-      pollWs.onmessage = function(ev) {
-        var r = JSON.parse(ev.data);
-        if (r.proposal_open_contract && r.proposal_open_contract.is_sold) {
-          var profit = parseFloat(r.proposal_open_contract.profit);
-          onResult(profit >= 0, profit, digit, null);
-          pollWs.close();
-        }
-      };
-      pollWs.onerror = function() { pollWs.close(); onResult(false, -stake, digit, 'WS error'); };
-      ws.close();
+      // Subscribe to contract result on same WS
+      ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: msg.buy.contract_id, subscribe: 1 }));
+    }
+    if (msg.proposal_open_contract && msg.proposal_open_contract.is_sold) {
+      if (!done) {
+        done = true;
+        clearTimeout(timeout);
+        var profit = parseFloat(msg.proposal_open_contract.profit);
+        onResult(profit >= 0, profit, digit, null);
+        ws.close();
+      }
     }
   };
-  ws.onerror = function() { ws.close(); onResult(false, -stake, digit, 'WS error'); };
+  ws.onerror = function() {
+    if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS error'); }
+    ws.close();
+  };
+  ws.onclose = function() {
+    if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS closed'); }
+  };
 }
 
 // ── ROUND EXECUTION ────────────────────────────────────────
