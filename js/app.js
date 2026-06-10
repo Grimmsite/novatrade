@@ -269,6 +269,11 @@ async function fetchBalance() {
           if (el3) el3.textContent = 'Balance: ' + bal;
           state.balance = msg.balance.balance;
           state.currency = msg.balance.currency;
+          // Update nav balance pill
+          var navBal = document.getElementById('navBalance');
+          var navHolder = document.getElementById('navBalanceHolder');
+          if (navBal) navBal.textContent = msg.balance.balance.toFixed(2) + ' ' + msg.balance.currency;
+          if (navHolder) navHolder.style.display = 'flex';
           // keep WS open for live balance updates
         }
       },
