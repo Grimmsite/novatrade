@@ -838,8 +838,8 @@ function updateMarketCard(symbol) {
     if (oddPctEl) oddPctEl.textContent = 'DIFF ' + lowDigit + ' (' + lowPct + '%)';
     if (evenLabelEl) evenLabelEl.textContent = 'Match';
     if (oddLabelEl) oddLabelEl.textContent = 'Differs';
-    if (evenBtnEl) evenBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITMATCH'); };
-    if (oddBtnEl) oddBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITDIFF'); };
+    if (evenBtnEl) evenBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITMATCH', topDigit); };
+    if (oddBtnEl) oddBtnEl.onclick = function(){ placeTrade(symbol, 'DIGITDIFF', lowDigit); };
   } else {
     const evenCount = digits.filter(d => d % 2 === 0).length;
     const evenPct = ((evenCount / total) * 100).toFixed(1);
