@@ -2727,9 +2727,8 @@ function bmdPickBestMarket() {
 
 // ── TRADE EXECUTION ────────────────────────────────────────
 // Single WS per trade: proposal → buy → result on same connection (no second WS)
-async function bmdPlaceTrade(sym, contractType, digit, stake, onResult) {
+function bmdPlaceTrade(sym, contractType, digit, stake, wsUrl, onResult) {
   var done = false;
-  var wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
   var timeout = setTimeout(function() {
     if (!done) { done = true; ws.close(); onResult(false, -stake, digit, 'timeout'); }
   }, 15000);
