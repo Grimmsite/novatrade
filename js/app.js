@@ -2769,14 +2769,17 @@ function bmdPlaceTrade(sym, contractType, digit, stake, wsUrl, onResult) {
 
 // ── ROUND EXECUTION ────────────────────────────────────────
 async function bmdRunRound(sym, contractType, digits, stake) {
+  var wsUrls = await Promise.all(digits.map(function() {
+    return getAuthWsUrl(state.bearerToken, state.accountId);
+  }));
   return new Promise(function(resolve) {
     var results = [];
     var pending = digits.length;
     if (pending === 0) { resolve([]); return; }
 
-    digits.forEach(function(digitConf) {
+    digits.forEach(function(digitConf, i) {
       var d = digitConf.d;
-      bmdPlaceTrade(sym, contractType, d, stake, function(won, profit, digit, err) {
+      bmdPlaceTrade(sym, contractType, d, stake, wsUrls[i], function(won, profit, digit, err) {
         if (err) bmdLog('Trade error digit '+digit+': '+err, 'info');
         results.push({ digit: digit, won: won, profit: profit });
         pending--;
