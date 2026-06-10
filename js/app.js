@@ -485,7 +485,7 @@ function switchAnalysisTab(tab) {
   document.querySelectorAll('.analysis-tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('atab-' + tab).classList.add('active');
   document.getElementById('analysis-' + tab).classList.add('active');
-  if (tab === 'tool') { initMarketCards(); if (!state.atoolWs || state.atoolWs.readyState > 1) { startAtool(); } else { updateAtoolDisplay(); } }
+  if (tab === 'tool') { initMarketCards(); if (!state.atoolWs || state.atoolWs.readyState > 1) { startAtool(); } else { updateAtoolDisplay(); } prefetchWsUrl(); }
   if (tab === 'dcircle') startDcircle();
 }
 
@@ -931,14 +931,37 @@ function startScanAll() {
 }
 
 // ─── TRADE PLACEMENT ───
-// Cache auth WS URL for 25 seconds to avoid per-trade HTTP round-trip
-var _bmdWsUrlCache = null;
-var _bmdWsUrlExpiry = 0;
-async function getCachedWsUrl() {
-  if (_bmdWsUrlCache && Date.now() < _bmdWsUrlExpiry) return _bmdWsUrlCache;
-  _bmdWsUrlCache = await getAuthWsUrl(state.bearerToken, state.accountId);
-  _bmdWsUrlExpiry = Date.now() + 25000;
-  return _bmdWsUrlCache;
+// Persistent authenticated trade WS for analysis page
+var _tradeWs = null;
+var _tradeWsReady = false;
+var _tradeWsQueue = [];
+
+async function ensureTradeWs() {
+  if (_tradeWs && _tradeWs.readyState === 1 && _tradeWsReady) return _tradeWs;
+  var wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
+  _tradeWsReady = false;
+  _tradeWs = createWS(
+    function() { _tradeWsReady = true; if (_tradeWsQueue.length) { var fn = _tradeWsQueue.shift(); fn(_tradeWs); } },
+    function(msg) { if (_tradeWs._onMsg) _tradeWs._onMsg(msg); },
+    function() { _tradeWs = null; _tradeWsReady = false; },
+    function() { _tradeWs = null; _tradeWsReady = false; },
+    wsUrl
+  );
+  return new Promise(function(res) {
+    var check = setInterval(function() {
+      if (_tradeWsReady) { clearInterval(check); res(_tradeWs); }
+    }, 50);
+  });
+}
+
+var _wsUrlCache = null;
+var _wsUrlTimer = null;
+async function prefetchWsUrl() {
+  try {
+    _wsUrlCache = await getAuthWsUrl(state.bearerToken, state.accountId);
+    if (_wsUrlTimer) clearTimeout(_wsUrlTimer);
+    _wsUrlTimer = setTimeout(prefetchWsUrl, 20000);
+  } catch(e) {}
 }
 
 async function placeTrade(symbol, contractType, barrier) {
@@ -951,7 +974,7 @@ async function placeTrade(symbol, contractType, barrier) {
   const durEl = document.getElementById('tdur-' + symbol);
   const stake = parseFloat(stakeEl?.value || 0.5);
   const dur = parseInt(durEl?.value || 1);
-  const wsUrl = await getCachedWsUrl();
+  const tradeWs = await ensureTradeWs();
   const ws = createWS(
     function() {
       wsSend(ws, {
@@ -992,7 +1015,7 @@ async function placeTrade(symbol, contractType, barrier) {
         ws.close();
       }
     },
-    null, null, wsUrl
+    null, null, (await getAuthWsUrl(state.bearerToken, state.accountId))
   );
 }
 function showAutoTradeSettings(symbol) {
