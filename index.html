@@ -441,6 +441,7 @@
           <div class="ai-field"><label>Recovery Multiplier</label><input type="number" id="ai_mult" value="1.8" min="1.1" step="0.1"></div>
           <div class="ai-field"><label>Max Recovery Steps</label><input type="number" id="ai_maxrec" value="3" min="1" max="6"></div>
           <div class="ai-field"><label>Consecutive Loss Pause</label><input type="number" id="ai_pause_after" value="3" min="1" max="10" title="Pause after N consecutive losses"></div>
+          <div class="ai-field"><label>Min Ticks</label><input type="number" id="ai_ticks" value="50" min="20" max="200" title="Minimum tick history required before trading"></div>
           <div class="ai-btn-row">
             <button class="ai-btn-start" id="aiStartBtn" onclick="aiStart()">▶ Start AI</button>
             <button class="ai-btn-stop" id="aiStopBtn" onclick="aiStop()" style="display:none">■ Stop</button>

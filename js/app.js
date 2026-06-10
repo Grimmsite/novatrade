@@ -2317,7 +2317,6 @@ async function aiStart() {
   ai.stake       = ai.initStake;
   ai.pnl=0; ai.trades=0; ai.wins=0; ai.losses=0; ai.recStep=0; ai.consecLosses=0;
   ai.wsUrl = null;
-  ai.wsUrl = null;
   ai.wsErrors = 0;
   ai.stopped=false; ai.running=true;
   document.getElementById('aiStartBtn').style.display='none';
