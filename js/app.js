@@ -2014,8 +2014,8 @@ function aiAnalyzePattern(ticks, sym, decimals) {
   var danger1 = last10.filter(function(d){ return d <= 1; }).length; // high = bad for over1
 
   // Streak detection: if dangerous digits clustering, avoid that contract
-  var under8PatConf = Math.min(93, 75 + (5 - danger8) * 3); // fewer 8/9s recently = higher conf
-  var over1PatConf  = Math.min(93, 75 + (5 - danger1) * 3); // fewer 0/1s recently = higher conf
+  var under8PatConf = Math.min(93, 75 + (2 - danger8) * 6); // danger8>2 = penalty
+  var over1PatConf  = Math.min(93, 75 + (2 - danger1) * 6); // danger1>2 = penalty
 
   // Pattern memory boost: use historical win rate for this symbol+contract
   var mem = ai.memory && ai.memory[sym];
@@ -2059,8 +2059,9 @@ function aiAnalyzeMomentum(ticks, sym) {
   if (lowCount  >= 3) return { ct:'DIGITOVER',  barrier:1, confidence: Math.min(93, 70 + lowCount  * 5) };
 
   // Neutral momentum: slight edge to whichever had fewer recent danger digits
-  var under8MomConf = Math.min(85, 72 + (5 - last5.filter(function(d){ return d>=8; }).length) * 2);
-  var over1MomConf  = Math.min(85, 72 + (5 - last5.filter(function(d){ return d<=1; }).length) * 2);
+  // Expected ~1 danger digit in last 5 (20% base rate)
+  var under8MomConf = Math.min(88, 75 + (1 - last5.filter(function(d){ return d>=8; }).length) * 8);
+  var over1MomConf  = Math.min(88, 75 + (1 - last5.filter(function(d){ return d<=1; }).length) * 8);
 
   if (under8MomConf >= over1MomConf) return { ct:'DIGITUNDER', barrier:8, confidence: under8MomConf };
   return { ct:'DIGITOVER', barrier:1, confidence: over1MomConf };
