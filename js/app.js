@@ -1881,7 +1881,14 @@ var ai = {
   currentSymbol:null, currentCt:null,
   scanSymbols:['R_10','R_25','R_50','R_75','R_100','1HZ10V','1HZ25V','1HZ50V','1HZ75V','1HZ100V'],
   cooldown:{}, // sym -> timestamp, skip market for 30s after loss
-  wsErrors:0,  // consecutive WS errors tracker
+  wsErrors:0,
+  consecLosses:0, // consecutive loss counter
+  paused:false,   // smart pause state
+  sessionStart:0, // session start timestamp
+  timerInterval:null,
+  chartData:[],   // P&L history for chart
+  startBalance:0, // balance at session start
+  statsRefreshInterval:null // digit stats refresh timer
   // Pattern memory: per symbol per contract type, track last 200 outcomes
   memory:{}, // sym -> { under8:{outcomes:[], streak:0}, over1:{outcomes:[], streak:0} }
   // Volatility tracker
@@ -1892,6 +1899,11 @@ var ai = {
 
 function aiScalperInit() {
   // nothing needed on page open
+}
+function aiToggleStakeMode() {
+  var mode = document.getElementById('ai_stake_mode').value;
+  document.getElementById('ai_stake_fixed_wrap').style.display = mode === 'fixed' ? '' : 'none';
+  document.getElementById('ai_stake_pct_wrap').style.display   = mode === 'percent' ? '' : 'none';
 }
 
 function aiLog(msg, type, pnl) {
@@ -2176,6 +2188,53 @@ function aiScanMarkets() {
   });
 }
 
+function aiDrawChart() {
+  var canvas = document.getElementById('ai_pnl_chart');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.offsetWidth || 240;
+  canvas.width = w; canvas.height = 80;
+  ctx.clearRect(0,0,w,80);
+  var data = ai.chartData;
+  if (data.length < 2) return;
+  var min = Math.min.apply(null,data), max = Math.max.apply(null,data);
+  if (max === min) { max += 1; min -= 1; }
+  var range = max - min;
+  var step = w / (data.length-1);
+  ctx.beginPath();
+  data.forEach(function(v,i){
+    var x = i*step, y = 80 - ((v-min)/range*70 + 5);
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle = ai.pnl >= 0 ? '#4caf50' : '#f44336';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Zero line
+  var zeroY = 80 - ((0-min)/range*70+5);
+  ctx.beginPath(); ctx.moveTo(0,zeroY); ctx.lineTo(w,zeroY);
+  ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.stroke();
+}
+
+function aiUpdateMarketTable() {
+  var el = document.getElementById('ai_market_table');
+  if (!el) return;
+  var rows = ai.scanSymbols.map(function(sym) {
+    var d = ai.marketData[sym];
+    if (!d) return '';
+    var wr = d.trades > 0 ? Math.round(d.wins/d.trades*100) : '-';
+    var u8 = d.derivUnder8Pct || '-';
+    var o1 = d.derivOver1Pct  || '-';
+    var cd = ai.cooldown[sym] && Date.now()-ai.cooldown[sym]<30000 ? '❄️' : '';
+    return '<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #1a1a1a">'+
+      '<span>'+cd+sym+'</span>'+
+      '<span style="color:#4caf50">U8:'+u8+'%</span>'+
+      '<span style="color:#64b5f6">O1:'+o1+'%</span>'+
+      '<span style="color:#f0c040">WR:'+wr+'%</span>'+
+      '</div>';
+  }).join('');
+  el.innerHTML = rows || 'Scanning...';
+}
+
 function aiPickBestMarket() {
   var now = Date.now();
   var candidates = [];
@@ -2219,6 +2278,36 @@ function aiPickBestMarket() {
 async function aiStart() {
   if (!state.bearerToken || !state.accountId) { showToast('Please log in first'); return; }
   if (ai.running) return;
+  // Auto stake from balance %
+  var stakeMode = document.getElementById('ai_stake_mode') ? document.getElementById('ai_stake_mode').value : 'fixed';
+  if (stakeMode === 'percent') {
+    var balEl = document.getElementById('heroBalance');
+    var bal = balEl ? parseFloat(balEl.textContent) : 0;
+    if (bal > 0) {
+      var pct = parseFloat(document.getElementById('ai_stake_pct').value) || 1;
+      document.getElementById('ai_stake').value = (bal * pct / 100).toFixed(2);
+    }
+  }
+  ai.startBalance = 0; // will be set on first balance check
+  ai.consecLosses = 0;
+  ai.paused = false;
+  ai.chartData = [];
+  ai.sessionStart = Date.now();
+  // Session timer
+  if (ai.timerInterval) clearInterval(ai.timerInterval);
+  ai.timerInterval = setInterval(function(){
+    if (!ai.running) { clearInterval(ai.timerInterval); return; }
+    var elapsed = Math.floor((Date.now() - ai.sessionStart) / 1000);
+    var m = Math.floor(elapsed/60), s = elapsed%60;
+    var el = document.getElementById('ai_timer');
+    if (el) el.textContent = m+'m '+s+'s';
+  }, 1000);
+  // Auto-refresh digit stats every 5 minutes
+  if (ai.statsRefreshInterval) clearInterval(ai.statsRefreshInterval);
+  ai.statsRefreshInterval = setInterval(function(){
+    if (!ai.running) { clearInterval(ai.statsRefreshInterval); return; }
+    ai.scanSymbols.forEach(function(sym){ aiFetchDigitStats(sym); });
+  }, 300000);
   ai.cfg.tp      = parseFloat(document.getElementById('ai_tp').value)||20;
   ai.cfg.sl      = parseFloat(document.getElementById('ai_sl').value)||10;
   ai.cfg.max     = parseInt(document.getElementById('ai_max').value)||200;
@@ -2228,7 +2317,7 @@ async function aiStart() {
   ai.cfg.ticks   = parseInt(document.getElementById('ai_ticks').value)||50;
   ai.initStake   = parseFloat(document.getElementById('ai_stake').value)||1;
   ai.stake       = ai.initStake;
-  ai.pnl=0; ai.trades=0; ai.wins=0; ai.losses=0; ai.recStep=0;
+  ai.pnl=0; ai.trades=0; ai.wins=0; ai.losses=0; ai.recStep=0; ai.consecLosses=0;
   ai.wsUrl = null;
   ai.wsUrl = null;
   ai.wsErrors = 0;
@@ -2245,6 +2334,8 @@ async function aiStart() {
 
 function aiStop() {
   ai.stopped=true; ai.running=false;
+  if (ai.timerInterval) { clearInterval(ai.timerInterval); ai.timerInterval=null; }
+  if (ai.statsRefreshInterval) { clearInterval(ai.statsRefreshInterval); ai.statsRefreshInterval=null; }
   if (ai.ws) { try{ai.ws.close();}catch(e){} ai.ws=null; }
   document.getElementById('aiStartBtn').style.display='';
   document.getElementById('aiStopBtn').style.display='none';
@@ -2254,6 +2345,21 @@ function aiStop() {
 
 async function aiTradeLoop() {
   if (ai.stopped || !ai.running) return;
+  // Smart pause after consecutive losses
+  if (ai.paused) {
+    aiSetStatus('scanning','Paused — cooling down...');
+    setTimeout(function(){ if(ai.running){ ai.paused=false; ai.consecLosses=0; aiLog('▶ Resuming after cooldown','info'); aiTradeLoop(); }}, 120000);
+    return;
+  }
+  // Balance protection check
+  if (ai.startBalance > 0) {
+    var balEl = document.getElementById('heroBalance');
+    var curBal = balEl ? parseFloat(balEl.textContent) : 0;
+    var protect = parseFloat(document.getElementById('ai_bal_protect') ? document.getElementById('ai_bal_protect').value : 20) || 20;
+    if (curBal > 0 && curBal < ai.startBalance * (1 - protect/100)) {
+      aiStop(); showToast('⚠️ Balance protection triggered'); return;
+    }
+  }
   if (ai.trades >= ai.cfg.max) { aiStop(); showToast('Max trades reached'); return; }
   if (ai.pnl <= -Math.abs(ai.cfg.sl)) { aiStop(); showToast('Stop loss hit'); return; }
   if (ai.pnl >= Math.abs(ai.cfg.tp)) { aiStop(); showToast('Take profit reached!'); return; }
@@ -2328,13 +2434,20 @@ function aiHandleMsg(msg, pick) {
     if (won) {
       ai.wins++; ai.recStep=0; ai.stake=ai.initStake;
       ai.memory[pick.sym][memKey].streak = Math.max(0, (ai.memory[pick.sym][memKey].streak||0)) + 1;
+      ai.consecLosses = 0;
       if (ai.marketData[pick.sym]) { ai.marketData[pick.sym].wins++; ai.marketData[pick.sym].trades++; }
       aiLog('WIN  '+pick.sym+' '+pick.sig.ct, 'win', profit);
     } else {
       ai.losses++;
       ai.memory[pick.sym][memKey].streak = Math.min(0, (ai.memory[pick.sym][memKey].streak||0)) - 1;
       if (ai.marketData[pick.sym]) ai.marketData[pick.sym].trades++;
-      ai.cooldown[pick.sym] = Date.now(); // cooldown this market for 30s
+      ai.cooldown[pick.sym] = Date.now();
+      ai.consecLosses++;
+      var pauseAfter = parseInt(document.getElementById('ai_pause_after') ? document.getElementById('ai_pause_after').value : 3) || 3;
+      if (ai.consecLosses >= pauseAfter) {
+        ai.paused = true;
+        aiLog('⏸ '+pauseAfter+' consecutive losses — pausing 2 minutes','info');
+      }
       if (ai.recStep < ai.cfg.maxRec) {
         ai.recStep++;
         ai.stake = parseFloat((ai.initStake * Math.pow(ai.cfg.mult, ai.recStep)).toFixed(2));
@@ -2345,6 +2458,11 @@ function aiHandleMsg(msg, pick) {
       aiLog('LOSS '+pick.sym+' '+pick.sig.ct, 'loss', profit);
     }
     aiUpdateStats();
+    // Update P&L chart
+    ai.chartData.push(ai.pnl);
+    aiDrawChart();
+    // Update market performance table
+    aiUpdateMarketTable();
     if (ai.ws) { try{ai.ws.close();}catch(e){} ai.ws=null; }
     ai.wsUrl=null; ai.wsErrors=0; // refresh wsUrl, reset error counter
     setTimeout(function(){if(ai.running)aiTradeLoop();},200);
