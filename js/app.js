@@ -2786,16 +2786,19 @@ async function bmdRunRound(sym, contractType, digits, stake) {
       bmdPlaceTrade(sym, contractType, d, stake, function(won, profit, digit, err) {
         if (err) bmdLog('Trade error digit '+digit+': '+err, 'info');
         results.push({ digit: digit, won: won, profit: profit });
-        // Update per-digit stats
-        if (won) { bmd.digitWins[digit]++; bmd.digitSkip[digit] = Math.max(0, bmd.digitSkip[digit] - 1); }
-        else      { bmd.digitLosses[digit]++; bmd.digitSkip[digit]++; }
-        bmd.trades++;
-        if (won) bmd.wins++; else bmd.losses++;
-        bmd.pnl += profit;
-        bmdUpdateDigitCard(digit);
-        bmdUpdateStats();
         pending--;
-        if (pending === 0) resolve(results);
+        if (pending === 0) {
+          results.forEach(function(r) {
+            if (r.won) { bmd.digitWins[r.digit]++; bmd.digitSkip[r.digit] = Math.max(0, bmd.digitSkip[r.digit] - 1); }
+            else        { bmd.digitLosses[r.digit]++; bmd.digitSkip[r.digit]++; }
+            bmd.trades++;
+            if (r.won) bmd.wins++; else bmd.losses++;
+            bmd.pnl += r.profit;
+            bmdUpdateDigitCard(r.digit);
+          });
+          bmdUpdateStats();
+          resolve(results);
+        }
       });
     });
   });
