@@ -931,6 +931,16 @@ function startScanAll() {
 }
 
 // ─── TRADE PLACEMENT ───
+// Cache auth WS URL for 25 seconds to avoid per-trade HTTP round-trip
+var _bmdWsUrlCache = null;
+var _bmdWsUrlExpiry = 0;
+async function getCachedWsUrl() {
+  if (_bmdWsUrlCache && Date.now() < _bmdWsUrlExpiry) return _bmdWsUrlCache;
+  _bmdWsUrlCache = await getAuthWsUrl(state.bearerToken, state.accountId);
+  _bmdWsUrlExpiry = Date.now() + 25000;
+  return _bmdWsUrlCache;
+}
+
 async function placeTrade(symbol, contractType, barrier) {
   if (!state.bearerToken) {
     showToast('Please log in first');
@@ -941,7 +951,7 @@ async function placeTrade(symbol, contractType, barrier) {
   const durEl = document.getElementById('tdur-' + symbol);
   const stake = parseFloat(stakeEl?.value || 0.5);
   const dur = parseInt(durEl?.value || 1);
-  const wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
+  const wsUrl = await getCachedWsUrl();
   const ws = createWS(
     function() {
       wsSend(ws, {
