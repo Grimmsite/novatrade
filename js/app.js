@@ -256,11 +256,10 @@ async function fetchBalance() {
   try {
     const wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
     const ws = createWS(
-      () => ws.send(JSON.stringify({ balance: 1 })),
+      () => ws.send(JSON.stringify({ balance: 1, subscribe: 1 })),
       (msg) => {
         if (msg.balance) {
           const bal = msg.balance.balance.toFixed(2) + ' ' + msg.balance.currency;
-          const short = msg.balance.balance.toFixed(2);
           const el1 = document.getElementById('autoBalance');
           const el2 = document.getElementById('heroBalance');
           const el3 = document.getElementById('accountBalance');
@@ -269,12 +268,10 @@ async function fetchBalance() {
           if (el3) el3.textContent = 'Balance: ' + bal;
           state.balance = msg.balance.balance;
           state.currency = msg.balance.currency;
-          // Update nav balance pill
           var navBal = document.getElementById('navBalance');
           var navHolder = document.getElementById('navBalanceHolder');
-          if (navBal) navBal.textContent = msg.balance.balance.toFixed(2) + ' ' + msg.balance.currency;
+          if (navBal) navBal.textContent = bal;
           if (navHolder) navHolder.style.display = 'flex';
-          // keep WS open for live balance updates
         }
       },
       null, null, wsUrl
