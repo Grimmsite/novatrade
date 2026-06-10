@@ -2607,22 +2607,63 @@ function bmdDrawChart() {
 // ── DIGIT FREQUENCY ANALYSIS ───────────────────────────────
 function bmdAnalyzeMarket(sym, prices, decimals) {
   var total = prices.length;
-  var freq = Array(10).fill(0);
-  prices.forEach(function(p) {
-    freq[Math.floor(p * Math.pow(10, decimals)) % 10]++;
+
+  function countFreq(arr) {
+    var f = Array(10).fill(0);
+    arr.forEach(function(p){ f[Math.floor(p*Math.pow(10,decimals))%10]++; });
+    return f;
+  }
+  function getRanks(freq) {
+    var ranks = Array(10).fill(0);
+    freq.map(function(f,d){ return {d:d,f:f}; })
+      .sort(function(a,b){ return b.f-a.f; })
+      .forEach(function(x,i){ ranks[x.d]=i; });
+    return ranks;
+  }
+  function makeDigits(freq, tot) {
+    return freq.map(function(f,d){ return {d:d, count:f, pct: f/tot*100}; });
+  }
+
+  var freq1000 = countFreq(prices);
+  var freq100  = countFreq(prices.slice(-100));
+  var freq20   = countFreq(prices.slice(-20));
+
+  var r1000 = getRanks(freq1000);
+  var r100  = getRanks(freq100);
+  var r20   = getRanks(freq20);
+
+  // Combined rank: 50% long-term + 30% recent + 20% right now
+  var digitsCombined = Array.from({length:10}, function(_,d) {
+    var cr = r1000[d]*0.5 + r100[d]*0.3 + r20[d]*0.2;
+    return { d:d, count:freq1000[d], pct:freq1000[d]/total*100, pctAll:freq1000[d]/total*100, combinedRank:cr, scoreMatch:(9-cr)*11, scoreDiff:cr*11 };
   });
-  // Simple pct per digit — that's all we need
-  var digits = freq.map(function(f, d) {
-    return { d: d, count: f, pct: f / total * 100 };
-  });
-  return { freq: freq, total: total, digits: digits };
+
+  return {
+    freq: freq1000, total: total,
+    confidence: digitsCombined,        // keep for chart compatibility
+    digits1000: makeDigits(freq1000, total),
+    digits100:  makeDigits(freq100,  100),
+    digits20:   makeDigits(freq20,   20),
+    digitsCombined: digitsCombined
+  };
 }
 
-function bmdPickDigits(analysis) {
-  var sorted = analysis.digits.slice().sort(function(a, b) { return b.count - a.count; });
-  var matchDigits = sorted.slice(0, 5);   // top 5 most frequent
-  var diffDigits  = sorted.slice(5);      // bottom 5 least frequent
-  return { matchDigits: matchDigits, diffDigits: diffDigits };
+function bmdPickDigits(analysis, mode) {
+  var pool;
+  if (mode && mode.indexOf('_20') !== -1) {
+    pool = analysis.digits20.slice().sort(function(a,b){ return b.count-a.count; });
+  } else if (mode && mode.indexOf('_100') !== -1) {
+    pool = analysis.digits100.slice().sort(function(a,b){ return b.count-a.count; });
+  } else if (mode && mode.indexOf('_1000') !== -1) {
+    pool = analysis.digits1000.slice().sort(function(a,b){ return b.count-a.count; });
+  } else {
+    // Combined — sort by combinedRank ascending (0 = best match)
+    pool = analysis.digitsCombined.slice().sort(function(a,b){ return a.combinedRank-b.combinedRank; });
+  }
+  return {
+    matchDigits: pool.slice(0, 5),   // most frequent / lowest rank
+    diffDigits:  pool.slice(5)       // least frequent / highest rank
+  };
 }
 
 function bmdRenderFreqChart(sym, analysis) {
@@ -2672,14 +2713,13 @@ function bmdScanAll(callback) {
 }
 
 function bmdPickBestMarket() {
-  // Best market = highest combined skew (sum of top 5 match scores deviation from 10%)
+  // Best market = highest deviation from uniform 10% across top 5 combined digits
   var best = null, bestSkew = -1;
   bmd.allSyms.forEach(function(sym) {
     var d = bmd.marketData[sym];
     if (!d) return;
-    var conf = d.analysis.confidence;
-    var matchTop5 = conf.slice().sort(function(a,b){ return b.scoreMatch-a.scoreMatch; }).slice(0,5);
-    var skew = matchTop5.reduce(function(s,c){ return s + Math.abs(c.pctAll - 10); }, 0);
+    var top5 = d.analysis.digitsCombined.slice().sort(function(a,b){ return a.combinedRank-b.combinedRank; }).slice(0,5);
+    var skew = top5.reduce(function(s,c){ return s + Math.abs(c.pct - 10); }, 0);
     if (skew > bestSkew) { bestSkew = skew; best = sym; }
   });
   return best;
@@ -2848,7 +2888,7 @@ async function bmdMainLoop() {
 
   bmdRenderFreqChart(sym, d.analysis);
 
-  var picked = bmdPickDigits(d.analysis);
+  var picked = bmdPickDigits(d.analysis, contractTypeSel);
   bmd.sym = sym;
 
   var roundResults = [];
