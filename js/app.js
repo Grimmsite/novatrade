@@ -2641,10 +2641,10 @@ function bmdAnalyzeMarket(sym, prices, decimals) {
 
     // Consistency gate: digit must be above average in ALL 3 windows to be a strong match
     var consistent = pct20 > 10 && pct100 > 10 && pct300 > 10;
-    if (!consistent) scoreMatch *= 0.75; // penalty for inconsistent digits
+    if (!consistent) scoreMatch *= 0.92; // penalty for inconsistent digits
 
     // Hot streak bonus for match: appeared 3+ times in last 10
-    if (streakCount[d] >= 3) scoreMatch += streakCount[d] * 2;
+    if (streakCount[d] >= 2) scoreMatch += streakCount[d] * 2;
     // Cold streak bonus for differ: appeared 0-1 times in last 10
     if (streakCount[d] <= 1) scoreDiff += (2 - streakCount[d]) * 2;
 
@@ -2666,26 +2666,25 @@ function bmdPickDigits(analysis, minConf) {
   var conf = analysis.confidence;
 
   // Entropy gate: if market is too uniform, no real edge exists — skip entirely
-  if (analysis.entropyRatio > 0.985) {
+  if (analysis.entropyRatio > 0.998) {
     return { matchDigits: [], diffDigits: [], reason: 'entropy' };
   }
 
   // Adaptive confidence: tighten after losing rounds, relax after winning
-  var adaptiveConf = minConf + (bmd.consecutiveLossRounds * 2) - (bmd.consecutiveWinRounds * 1);
-  adaptiveConf = Math.max(minConf, Math.min(adaptiveConf, 85));
+  var adaptiveConf = minConf + (bmd.consecutiveLossRounds * 1) - (bmd.consecutiveWinRounds * 1);
+  adaptiveConf = Math.max(minConf, Math.min(adaptiveConf, 75));
 
   var matchRanked = conf.slice().sort(function(a, b) { return b.scoreMatch - a.scoreMatch; });
   var diffRanked  = conf.slice().sort(function(a, b) { return b.scoreDiff  - a.scoreDiff;  });
 
   var matchDigits = matchRanked.slice(0, 5).filter(function(c) {
-    if (c.cooling) return false;                   // fading digit
-    if (bmd.digitSkip[c.d] >= 2) return false;    // on losing streak
+    if (bmd.digitSkip[c.d] >= 3) return false;    // on losing streak (raised from 2→3)
     if (c.scoreMatch < adaptiveConf) return false; // below adaptive threshold
     return true;
   });
 
   var diffDigits = diffRanked.slice(0, 5).filter(function(c) {
-    if (bmd.digitSkip[c.d] >= 2) return false;
+    if (bmd.digitSkip[c.d] >= 3) return false;
     if (c.scoreDiff < adaptiveConf) return false;
     return true;
   });
