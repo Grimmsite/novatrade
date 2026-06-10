@@ -1880,6 +1880,8 @@ var ai = {
   marketData:{}, // symbol -> {ticks:[], lastPrice:0, wins:0, trades:0, digitHistory:[], patternMemory:{}}
   currentSymbol:null, currentCt:null,
   scanSymbols:['R_10','R_25','R_50','R_75','R_100','1HZ10V','1HZ25V','1HZ50V','1HZ75V','1HZ100V'],
+  cooldown:{}, // sym -> timestamp, skip market for 30s after loss
+  wsErrors:0,  // consecutive WS errors tracker
   // Pattern memory: per symbol per contract type, track last 200 outcomes
   memory:{}, // sym -> { under8:{outcomes:[], streak:0}, over1:{outcomes:[], streak:0} }
   // Volatility tracker
@@ -1939,7 +1941,7 @@ function aiUpdateSignals(freq, pat, mom) {
 
 // Layer 1: Frequency Analysis (last 100 ticks)
 function aiAnalyzeDigitFreq(ticks, decimals) {
-  if (ticks.length < 30) return null;
+  if (ticks.length < 100) return null;
   var digits = ticks.slice(-100).map(function(p){
     return Math.floor(p * Math.pow(10, decimals||2)) % 10;
   });
@@ -2116,19 +2118,41 @@ function aiScanMarkets() {
 }
 
 function aiPickBestMarket() {
-  // Score each market: signal confidence * session win rate bonus
-  var best = null, bestScore = 0;
+  var now = Date.now();
+  var candidates = [];
+
   ai.scanSymbols.forEach(function(sym) {
     var data = ai.marketData[sym];
-    if (!data || data.ticks.length < 20) return;
+    // Need at least 100 ticks for reliable analysis
+    if (!data || data.ticks.length < 100) return;
+    // Skip markets on cooldown (30s after a loss)
+    if (ai.cooldown[sym] && now - ai.cooldown[sym] < 30000) return;
     var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
     var sig = aiPickBestSignal(data.ticks, dec, sym);
     if (!sig) return;
-    var wrBonus = data.trades > 5 ? (data.wins/data.trades) * 20 : 0;
-    var score = sig.confidence + wrBonus;
-    if (score > bestScore) { bestScore = score; best = { sym:sym, sig:sig, score:score }; }
+    // Win rate bonus from session history
+    var wrBonus = data.trades > 5 ? (data.wins / data.trades) * 15 : 0;
+    // Tick quality bonus: more ticks = more reliable
+    var tickBonus = Math.min(5, data.ticks.length / 100);
+    var score = sig.confidence + wrBonus + tickBonus;
+    candidates.push({ sym:sym, sig:sig, score:score });
   });
-  return best;
+
+  if (!candidates.length) return null;
+
+  // Cross-market consensus: check how many markets agree on contract type
+  var under8Count = candidates.filter(function(c){ return c.sig.ct === 'DIGITUNDER'; }).length;
+  var over1Count  = candidates.filter(function(c){ return c.sig.ct === 'DIGITOVER';  }).length;
+  var majorCt = under8Count >= over1Count ? 'DIGITUNDER' : 'DIGITOVER';
+
+  // Boost score for markets that agree with majority
+  candidates.forEach(function(c) {
+    if (c.sig.ct === majorCt) c.score += 5;
+  });
+
+  // Sort by score, pick best
+  candidates.sort(function(a,b){ return b.score - a.score; });
+  return candidates[0];
 }
 
 // ── TRADE LOOP ─────────────────────────────────────────────
@@ -2148,6 +2172,7 @@ async function aiStart() {
   ai.pnl=0; ai.trades=0; ai.wins=0; ai.losses=0; ai.recStep=0;
   ai.wsUrl = null;
   ai.wsUrl = null;
+  ai.wsErrors = 0;
   ai.stopped=false; ai.running=true;
   document.getElementById('aiStartBtn').style.display='none';
   document.getElementById('aiStopBtn').style.display='';
@@ -2185,7 +2210,7 @@ async function aiTradeLoop() {
   ai.currentSymbol = pick.sym;
   ai.currentCt     = pick.sig.ct;
   var mEl = document.getElementById('ai_market_display');
-  if (mEl) mEl.textContent = pick.sym + ' — ' + pick.sig.ct + ' (' + Math.round(pick.score) + '% score)';
+  if (mEl) mEl.textContent = pick.sym + ' — ' + pick.sig.ct + ' (' + (isNaN(pick.score) ? '?' : Math.round(pick.score)) + '% score)';
   ai._tradeStart = Date.now();
   aiLog('Signal: '+pick.sym+' | '+pick.sig.ct+(pick.sig.barrier!=null?' barrier:'+pick.sig.barrier:'')+' | conf:'+Math.round(pick.sig.confidence)+'%','info');
 
@@ -2204,7 +2229,7 @@ async function aiTradeLoop() {
       ai.ws.send(JSON.stringify(proposal));
     };
     ai.ws.onmessage = function(e){ aiHandleMsg(JSON.parse(e.data), pick); };
-    ai.ws.onerror   = function(){ ai.wsUrl=null; aiLog('WS error — retrying','info'); setTimeout(function(){if(ai.running)aiTradeLoop();},1000); };
+    ai.ws.onerror   = function(){ ai.wsUrl=null; ai.wsErrors++; aiLog('WS error — retrying','info'); var delay = Math.min(5000, 1000 * ai.wsErrors); setTimeout(function(){if(ai.running)aiTradeLoop();},delay); };
     ai.ws.onclose   = function(){};
   } catch(err) {
     aiLog('Connect error: '+err.message,'info');
@@ -2250,6 +2275,7 @@ function aiHandleMsg(msg, pick) {
       ai.losses++;
       ai.memory[pick.sym][memKey].streak = Math.min(0, (ai.memory[pick.sym][memKey].streak||0)) - 1;
       if (ai.marketData[pick.sym]) ai.marketData[pick.sym].trades++;
+      ai.cooldown[pick.sym] = Date.now(); // cooldown this market for 30s
       if (ai.recStep < ai.cfg.maxRec) {
         ai.recStep++;
         ai.stake = parseFloat((ai.initStake * Math.pow(ai.cfg.mult, ai.recStep)).toFixed(2));
@@ -2261,7 +2287,7 @@ function aiHandleMsg(msg, pick) {
     }
     aiUpdateStats();
     if (ai.ws) { try{ai.ws.close();}catch(e){} ai.ws=null; }
-    ai.wsUrl=null; // refresh wsUrl each trade
+    ai.wsUrl=null; ai.wsErrors=0; // refresh wsUrl, reset error counter
     setTimeout(function(){if(ai.running)aiTradeLoop();},200);
   }
 }
