@@ -210,7 +210,7 @@ async function authorizeToken(bearerToken) {
 
     // Step 3: connect and get user info via balance
     const ws = createWS(
-      () => ws.send(JSON.stringify({ balance: 1 })),
+      () => ws.send(JSON.stringify({ balance: 1, subscribe: 1 })),
       (msg) => {
         if (msg.balance) {
           state.userInfo = { loginid: accountId, currency: msg.balance.currency, fullname: accountId };
@@ -269,7 +269,7 @@ async function fetchBalance() {
           if (el3) el3.textContent = 'Balance: ' + bal;
           state.balance = msg.balance.balance;
           state.currency = msg.balance.currency;
-          ws.close();
+          // keep WS open for live balance updates
         }
       },
       null, null, wsUrl
