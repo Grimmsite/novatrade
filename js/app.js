@@ -3586,7 +3586,8 @@ async function bmdRunRound() {
     var isDiff = contractType === 'DIGITDIFF';
     var topDigits = isDiff ? analysis.differTop.slice(0,5) : analysis.matchTop.slice(0,5);
     topDigits.forEach(function(item) {
-      if (Math.abs(item.z) * 20 >= bmd.cfg.minConf - 50) {
+      // Always include top 5 digits — confidence filters round quality not digit selection
+      if (true) {
         tradePlan.push({ ct: contractType, digit: item.digit, score: item.score });
       }
     });
