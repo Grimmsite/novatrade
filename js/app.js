@@ -486,6 +486,7 @@ function switchAnalysisTab(tab) {
   document.getElementById('atab-' + tab).classList.add('active');
   document.getElementById('analysis-' + tab).classList.add('active');
   if (tab === 'tool') { initMarketCards(); if (!state.atoolWs || state.atoolWs.readyState > 1) { startAtool(); } else { updateAtoolDisplay(); } prefetchWsUrl(); }
+  if (tab === 'nova') { novaInit(); }
   if (tab === 'dcircle') startDcircle();
 }
 
@@ -2553,6 +2554,1749 @@ function aiHandleMsg(msg, pick) {
     if (ai.ws) { try{ai.ws.close();}catch(e){} ai.ws=null; }
     ai.wsUrl=null; ai.wsErrors=0; // refresh wsUrl, reset error counter
     setTimeout(function(){if(ai.running)aiTradeLoop();},200);
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// NOVA ANALYSIS ENGINE
+// ═══════════════════════════════════════════════════════════════
+var nova = {
+  ws: null,
+  ticks: [],
+  digits: [],
+  market: 'R_50',
+  tickCount: 500,
+  freqTf: 50,
+  lastTickTime: 0,
+  tickSpeeds: [],
+  scanWs: {},
+  scanData: {},
+  tradeWsUrl: null,
+  tradeWs: null,
+  bestTrade: null
+};
+
+function novaInit() {
+  nova.market = document.getElementById('novaMarket').value;
+  nova.tickCount = parseInt(document.getElementById('novaTickCount').value) || 500;
+  novaConnect();
+}
+
+function novaMarketChange() {
+  nova.market = document.getElementById('novaMarket').value;
+  nova.ticks = []; nova.digits = [];
+  if (nova.ws) { try { nova.ws.close(); } catch(e) {} nova.ws = null; }
+  novaConnect();
+}
+
+function novaTickCountChange() {
+  nova.tickCount = parseInt(document.getElementById('novaTickCount').value) || 500;
+  nova.ticks = []; nova.digits = [];
+  if (nova.ws) { try { nova.ws.close(); } catch(e) {} nova.ws = null; }
+  novaConnect();
+}
+
+function novaConnect() {
+  var badge = document.getElementById('novaLiveBadge');
+  if (badge) { badge.textContent = '● CONNECTING'; badge.classList.remove('live'); }
+  nova.ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+  nova.ws.onopen = function() {
+    nova.ws.send(JSON.stringify({ ticks_history: nova.market, count: nova.tickCount, end: 'latest', style: 'ticks' }));
+  };
+  nova.ws.onmessage = function(e) {
+    var msg = JSON.parse(e.data);
+    if (msg.history && msg.history.prices) {
+      nova.ticks = msg.history.prices.map(Number);
+      nova.digits = novaGetDigits(nova.ticks);
+      nova.ws.send(JSON.stringify({ ticks: nova.market, subscribe: 1 }));
+      if (badge) { badge.textContent = '● LIVE'; badge.classList.add('live'); }
+      novaRenderAll();
+    }
+    if (msg.tick && msg.tick.quote) {
+      var now = Date.now();
+      if (nova.lastTickTime) {
+        nova.tickSpeeds.push(now - nova.lastTickTime);
+        if (nova.tickSpeeds.length > 20) nova.tickSpeeds.shift();
+      }
+      nova.lastTickTime = now;
+      nova.ticks.push(Number(msg.tick.quote));
+      if (nova.ticks.length > 2000) nova.ticks.shift();
+      nova.digits = novaGetDigits(nova.ticks);
+      novaRenderAll();
+    }
+  };
+  nova.ws.onerror = function() {
+    if (badge) { badge.textContent = '● ERROR'; badge.classList.remove('live'); }
+    setTimeout(novaConnect, 3000);
+  };
+  nova.ws.onclose = function() {
+    if (badge) { badge.textContent = '● RECONNECTING'; badge.classList.remove('live'); }
+  };
+}
+
+function novaGetDigits(ticks) {
+  var dec = nova.market.indexOf('1HZ') !== -1 ? 2 : 2;
+  return ticks.map(function(p) { return Math.floor(p * Math.pow(10, dec)) % 10; });
+}
+
+// ── STATS FUNCTIONS ──────────────────────────────────────────
+
+function novaShannonEntropy(digits) {
+  var freq = new Array(10).fill(0);
+  digits.forEach(function(d) { freq[d]++; });
+  var n = digits.length, H = 0;
+  freq.forEach(function(f) {
+    if (f > 0) { var p = f/n; H -= p * Math.log2(p); }
+  });
+  return H; // max is log2(10) = 3.322
+}
+
+function novaChiSquare(digits) {
+  var freq = new Array(10).fill(0);
+  digits.forEach(function(d) { freq[d]++; });
+  var n = digits.length, expected = n / 10, chi = 0;
+  freq.forEach(function(f) { chi += Math.pow(f - expected, 2) / expected; });
+  // Approximate p-value for chi-square with 9 df
+  // Using Wilson-Hilferty approximation
+  var df = 9;
+  var x = chi;
+  var p = 1 - novaChiPvalue(x, df);
+  return { chi: chi.toFixed(2), p: p.toFixed(4) };
+}
+
+function novaChiPvalue(x, df) {
+  // Regularized incomplete gamma function approximation
+  var a = df / 2, xi = x / 2;
+  if (xi === 0) return 0;
+  // Series approximation
+  var sum = 1, term = 1;
+  for (var i = 1; i < 50; i++) {
+    term *= xi / (a + i);
+    sum += term;
+    if (term < 1e-10) break;
+  }
+  var lnGammaA = novaLnGamma(a);
+  return Math.min(1, Math.exp(-xi + a * Math.log(xi) - lnGammaA) * sum);
+}
+
+function novaLnGamma(z) {
+  var coef = [76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  var x = z, y = z, tmp = x + 5.5;
+  tmp -= (x + 0.5) * Math.log(tmp);
+  var ser = 1.000000000190015;
+  for (var j = 0; j < 6; j++) { y++; ser += coef[j] / y; }
+  return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+
+function novaHurst(digits) {
+  // Simplified Hurst exponent via R/S analysis
+  if (digits.length < 20) return 0.5;
+  var n = digits.length;
+  var mean = digits.reduce(function(a,b){return a+b;},0) / n;
+  var cumDev = [], runSum = 0;
+  for (var i = 0; i < n; i++) { runSum += digits[i] - mean; cumDev.push(runSum); }
+  var R = Math.max.apply(null, cumDev) - Math.min.apply(null, cumDev);
+  var std = Math.sqrt(digits.reduce(function(a,b){return a+Math.pow(b-mean,2);},0) / n);
+  if (std === 0) return 0.5;
+  var RS = R / std;
+  return Math.log(RS) / Math.log(n);
+}
+
+function novaZScores(digits) {
+  var freq = new Array(10).fill(0);
+  digits.forEach(function(d) { freq[d]++; });
+  var n = digits.length, expected = n / 10;
+  var std = Math.sqrt(n * 0.1 * 0.9);
+  return freq.map(function(f) { return (f - expected) / std; });
+}
+
+function novaMarkov(digits) {
+  // Build 10x10 transition matrix
+  var matrix = [];
+  for (var i = 0; i < 10; i++) { matrix[i] = new Array(10).fill(0); }
+  for (var j = 0; j < digits.length - 1; j++) {
+    matrix[digits[j]][digits[j+1]]++;
+  }
+  // Normalize rows to probabilities
+  var probs = [];
+  for (var r = 0; r < 10; r++) {
+    var rowSum = matrix[r].reduce(function(a,b){return a+b;},0);
+    probs[r] = matrix[r].map(function(v) { return rowSum > 0 ? v/rowSum : 0.1; });
+  }
+  return probs;
+}
+
+function novaAutocorr(digits, maxLag) {
+  var n = digits.length;
+  var mean = digits.reduce(function(a,b){return a+b;},0) / n;
+  var variance = digits.reduce(function(a,b){return a+Math.pow(b-mean,2);},0) / n;
+  if (variance === 0) return new Array(maxLag).fill(0);
+  var acf = [];
+  for (var lag = 1; lag <= maxLag; lag++) {
+    var cov = 0;
+    for (var i = 0; i < n - lag; i++) cov += (digits[i] - mean) * (digits[i+lag] - mean);
+    acf.push(cov / ((n - lag) * variance));
+  }
+  return acf;
+}
+
+function novaKelly(winRate, payout) {
+  // Kelly: f* = (bp - q) / b where b=payout, p=winRate, q=1-winRate
+  var q = 1 - winRate;
+  var kelly = (payout * winRate - q) / payout;
+  return Math.max(0, Math.min(kelly, 0.25)); // cap at 25% of bankroll
+}
+
+function novaExpectedValue(winRate, payout, stake) {
+  return (winRate * payout * stake) - ((1 - winRate) * stake);
+}
+
+function novaStreakAnalysis(digits) {
+  if (digits.length < 2) return {};
+  var current = digits[digits.length - 1];
+  var streak = 1;
+  for (var i = digits.length - 2; i >= 0; i--) {
+    if (digits[i] === current) streak++;
+    else break;
+  }
+  // Check if last 5 digits have been high (>=8) or low (<=1)
+  var last5 = digits.slice(-5);
+  var highRun = last5.filter(function(d){return d>=8;}).length;
+  var lowRun  = last5.filter(function(d){return d<=1;}).length;
+  // Longest streak in last 50
+  var last50 = digits.slice(-50);
+  var maxStreak = 1, curS = 1;
+  for (var j = 1; j < last50.length; j++) {
+    if (last50[j] === last50[j-1]) { curS++; maxStreak = Math.max(maxStreak, curS); }
+    else curS = 1;
+  }
+  return { current: current, streak: streak, highRun: highRun, lowRun: lowRun, maxStreak: maxStreak };
+}
+
+function novaRegime(ticks, digits) {
+  if (ticks.length < 20) return { name: 'LOADING', color: '#666', desc: 'Need more data' };
+  var entropy = novaShannonEntropy(digits.slice(-50));
+  var hurst = novaHurst(digits.slice(-50));
+  var avgSpeed = nova.tickSpeeds.length > 0 ? nova.tickSpeeds.reduce(function(a,b){return a+b;},0)/nova.tickSpeeds.length : 1000;
+  var priceChanges = [];
+  for (var i = 1; i < Math.min(ticks.length, 50); i++) priceChanges.push(Math.abs(ticks[i]-ticks[i-1]));
+  var avgChange = priceChanges.reduce(function(a,b){return a+b;},0)/priceChanges.length;
+  if (entropy < 2.8) return { name: 'BIASED', color: '#a78bfa', desc: 'Non-random distribution detected', entropy: entropy, hurst: hurst, speed: avgSpeed, vol: avgChange };
+  if (hurst > 0.6) return { name: 'TRENDING', color: '#fbbf24', desc: 'Persistent digit sequences', entropy: entropy, hurst: hurst, speed: avgSpeed, vol: avgChange };
+  if (hurst < 0.4) return { name: 'MEAN REVERTING', color: '#34d399', desc: 'Anti-persistent — reversals likely', entropy: entropy, hurst: hurst, speed: avgSpeed, vol: avgChange };
+  return { name: 'RANDOM', color: '#94a3b8', desc: 'Near-random — trade cautiously', entropy: entropy, hurst: hurst, speed: avgSpeed, vol: avgChange };
+}
+
+function novaBestSignal(digits) {
+  if (digits.length < 50) return null;
+  var signals = [];
+  var zscores = novaZScores(digits.slice(-200));
+  
+  // Full barrier analysis
+  for (var barrier = 0; barrier <= 9; barrier++) {
+    // OVER barrier: wins when last digit > barrier
+    var overWins = digits.slice(-200).filter(function(d){return d > barrier;}).length;
+    var overRate = overWins / Math.min(200, digits.length);
+    var overPayout = barrier / 10 * 0.85; // approximate Deriv payout
+    var overEV = novaExpectedValue(overRate, overPayout, 1);
+    
+    // UNDER barrier: wins when last digit < barrier
+    var underWins = digits.slice(-200).filter(function(d){return d < barrier;}).length;
+    var underRate = underWins / Math.min(200, digits.length);
+    var underPayout = (10 - barrier) / 10 * 0.85;
+    var underEV = novaExpectedValue(underRate, underPayout, 1);
+    
+    if (overEV > 0) signals.push({ ct: 'DIGITOVER', barrier: barrier, winRate: overRate, payout: overPayout, ev: overEV, conf: Math.min(95, overRate * 100) });
+    if (underEV > 0) signals.push({ ct: 'DIGITUNDER', barrier: barrier, winRate: underRate, payout: underPayout, ev: underEV, conf: Math.min(95, underRate * 100) });
+  }
+  
+  // Even/Odd
+  var evenCount = digits.slice(-200).filter(function(d){return d%2===0;}).length;
+  var evenRate = evenCount / Math.min(200, digits.length);
+  var oddRate = 1 - evenRate;
+  if (evenRate > 0.52) signals.push({ ct: 'DIGITEVEN', barrier: null, winRate: evenRate, payout: 0.95, ev: novaExpectedValue(evenRate, 0.95, 1), conf: Math.min(95, evenRate * 100) });
+  if (oddRate > 0.52)  signals.push({ ct: 'DIGITODD',  barrier: null, winRate: oddRate,  payout: 0.95, ev: novaExpectedValue(oddRate,  0.95, 1), conf: Math.min(95, oddRate  * 100) });
+
+  // Sort by EV
+  signals.sort(function(a,b){ return b.ev - a.ev; });
+  return signals[0] || null;
+}
+
+// ── RENDER FUNCTIONS ─────────────────────────────────────────
+
+function novaSetFreqTf(n, btn) {
+  nova.freqTf = n;
+  document.querySelectorAll('.nova-tf-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  novaRenderFreq();
+}
+
+function novaRenderAll() {
+  if (nova.digits.length < 5) return;
+  novaRenderPriceHero();
+  novaRenderFreq();
+  novaRenderMarkov();
+  novaRenderSignals();
+  novaRenderMtf();
+  novaRenderStreak();
+  novaRenderKelly();
+  novaRenderBarriers();
+  novaRenderStream();
+  novaRenderAutocorr();
+  novaRenderRegime();
+}
+
+function novaRenderPriceHero() {
+  var lastPrice = nova.ticks[nova.ticks.length - 1];
+  var lastDigit = nova.digits[nova.digits.length - 1];
+  var el = document.getElementById('novaPriceMain');
+  if (el) el.textContent = lastPrice ? lastPrice.toFixed(2) : '—';
+  var ld = document.getElementById('novaLastDigit');
+  if (ld) {
+    ld.textContent = lastDigit;
+    ld.style.color = lastDigit >= 8 ? '#ef4444' : lastDigit <= 1 ? '#34d399' : '#a78bfa';
+  }
+  var avgSpeed = nova.tickSpeeds.length > 0 ? Math.round(nova.tickSpeeds.reduce(function(a,b){return a+b;},0)/nova.tickSpeeds.length) : null;
+  var spEl = document.getElementById('novaTickSpeed');
+  if (spEl && avgSpeed) spEl.textContent = avgSpeed + ' ms/tick';
+  
+  var row = document.getElementById('novaLastDigitsRow');
+  if (row) {
+    var last20 = nova.digits.slice(-20);
+    row.innerHTML = last20.map(function(d, i) {
+      var cls = d >= 8 ? 'high' : d <= 1 ? 'low' : 'mid';
+      if (i === last20.length - 1) cls += ' latest';
+      return '<div class="nova-digit-pill ' + cls + '">' + d + '</div>';
+    }).join('');
+  }
+}
+
+function novaRenderFreq() {
+  var sample = nova.digits.slice(-nova.freqTf);
+  if (sample.length < 5) return;
+  var freq = new Array(10).fill(0);
+  sample.forEach(function(d){ freq[d]++; });
+  var max = Math.max.apply(null, freq);
+  var zscores = novaZScores(sample);
+  var grid = document.getElementById('novaFreqGrid');
+  if (!grid) return;
+  
+  var colors = [
+    '#34d399','#4ade80','#86efac','#60a5fa','#93c5fd',
+    '#fbbf24','#f97316','#fb7185','#ef4444','#dc2626'
+  ];
+  
+  grid.innerHTML = freq.map(function(f, d) {
+    var pct = (f / sample.length * 100).toFixed(1);
+    var h = max > 0 ? (f / max * 100) : 0;
+    var z = zscores[d];
+    var zClass = z > 1.5 ? 'pos' : z < -1.5 ? 'neg' : 'neu';
+    var zStr = (z >= 0 ? '+' : '') + z.toFixed(1);
+    return '<div class="nova-freq-bar-wrap">' +
+      '<div class="nova-freq-digit">' + d + '</div>' +
+      '<div class="nova-freq-bar-bg"><div class="nova-freq-bar" style="height:' + h + '%;background:' + colors[d] + '"></div></div>' +
+      '<div class="nova-freq-pct">' + pct + '%</div>' +
+      '<div class="nova-freq-zscore ' + zClass + '">' + zStr + 'σ</div>' +
+    '</div>';
+  }).join('');
+
+  // Stats
+  var entropy = novaShannonEntropy(sample);
+  var chiResult = novaChiSquare(sample);
+  var hurst = novaHurst(sample);
+  var maxZ = Math.max.apply(null, zscores.map(Math.abs));
+  
+  var enEl = document.getElementById('novaEntropy');
+  if (enEl) { enEl.textContent = entropy.toFixed(3); enEl.style.color = entropy < 2.8 ? '#a78bfa' : '#94a3b8'; }
+  var chiEl = document.getElementById('novaChiSq');
+  if (chiEl) { chiEl.textContent = chiResult.p; chiEl.style.color = parseFloat(chiResult.p) < 0.05 ? '#ef4444' : '#94a3b8'; }
+  var huEl = document.getElementById('novaHurst');
+  if (huEl) { huEl.textContent = hurst.toFixed(3); huEl.style.color = hurst > 0.6 ? '#fbbf24' : hurst < 0.4 ? '#34d399' : '#94a3b8'; }
+  var zEl = document.getElementById('novaZScore');
+  if (zEl) { zEl.textContent = maxZ.toFixed(2) + 'σ'; zEl.style.color = maxZ > 2 ? '#ef4444' : maxZ > 1.5 ? '#fbbf24' : '#94a3b8'; }
+}
+
+function novaRenderMarkov() {
+  var sample = nova.digits.slice(-500);
+  if (sample.length < 10) return;
+  var probs = novaMarkov(sample);
+  var wrap = document.getElementById('novaMarkovWrap');
+  if (!wrap) return;
+  
+  var html = '<table class="nova-markov-table"><tr><th>↓from\to→</th>';
+  for (var d = 0; d < 10; d++) html += '<th>' + d + '</th>';
+  html += '</tr>';
+  
+  for (var r = 0; r < 10; r++) {
+    html += '<tr><th>' + r + '</th>';
+    for (var c = 0; c < 10; c++) {
+      var v = probs[r][c];
+      var pct = (v * 100).toFixed(0);
+      var alpha = v * 3;
+      var bg = v > 0.15 ? 'rgba(76,175,80,' + alpha + ')' : v > 0.08 ? 'rgba(255,193,7,' + (alpha*0.7) + ')' : 'rgba(244,67,54,' + (alpha*0.4) + ')';
+      html += '<td style="background:' + bg + ';color:' + (v > 0.15 ? '#fff' : '#aaa') + '">' + pct + '</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  wrap.innerHTML = html;
+}
+
+function novaRenderSignals() {
+  var digits = nova.digits;
+  if (digits.length < 30) return;
+  
+  var signals = [];
+  var zscores = novaZScores(digits.slice(-200));
+  var entropy = novaShannonEntropy(digits.slice(-100));
+  var hurst = novaHurst(digits.slice(-100));
+  var streak = novaStreakAnalysis(digits);
+  
+  // Signal 1: Frequency bias
+  var maxZ = Math.max.apply(null, zscores.map(Math.abs));
+  signals.push({
+    icon: '📊', name: 'Frequency Bias', value: maxZ.toFixed(2) + 'σ',
+    conf: Math.min(100, maxZ * 30),
+    color: maxZ > 2 ? '#ef4444' : maxZ > 1.5 ? '#fbbf24' : '#64748b',
+    strength: maxZ > 2 ? 'strong' : maxZ > 1.5 ? 'moderate' : 'weak'
+  });
+  
+  // Signal 2: Entropy
+  var entropySignal = Math.max(0, (3.322 - entropy) / 3.322 * 100);
+  signals.push({
+    icon: '🌀', name: 'Low Entropy', value: entropy.toFixed(3),
+    conf: entropySignal,
+    color: entropy < 2.8 ? '#a78bfa' : '#64748b',
+    strength: entropy < 2.8 ? 'strong' : entropy < 3.0 ? 'moderate' : 'weak'
+  });
+  
+  // Signal 3: Hurst
+  var hurstSignal = Math.abs(hurst - 0.5) * 200;
+  signals.push({
+    icon: '📈', name: 'Hurst Persistence', value: hurst.toFixed(3),
+    conf: hurstSignal,
+    color: hurst > 0.6 ? '#fbbf24' : hurst < 0.4 ? '#34d399' : '#64748b',
+    strength: Math.abs(hurst-0.5) > 0.1 ? 'strong' : Math.abs(hurst-0.5) > 0.05 ? 'moderate' : 'weak'
+  });
+  
+  // Signal 4: Hot digits
+  var hotDigit = zscores.indexOf(Math.max.apply(null, zscores));
+  var coldDigit = zscores.indexOf(Math.min.apply(null, zscores));
+  signals.push({
+    icon: '🔥', name: 'Hot Digit: ' + hotDigit, value: (zscores[hotDigit]>=0?'+':'') + zscores[hotDigit].toFixed(2) + 'σ',
+    conf: Math.min(100, Math.abs(zscores[hotDigit]) * 25),
+    color: zscores[hotDigit] > 1.5 ? '#ef4444' : '#64748b',
+    strength: Math.abs(zscores[hotDigit]) > 2 ? 'strong' : 'moderate'
+  });
+  
+  // Signal 5: Streak
+  signals.push({
+    icon: '⚡', name: 'Current Streak ×' + streak.streak, value: 'Digit ' + streak.current,
+    conf: Math.min(100, streak.streak * 20),
+    color: streak.streak >= 4 ? '#a78bfa' : '#64748b',
+    strength: streak.streak >= 4 ? 'strong' : streak.streak >= 2 ? 'moderate' : 'weak'
+  });
+  
+  // Signal 6: Chi-square
+  var chi = novaChiSquare(digits.slice(-200));
+  var chiConf = Math.min(100, (1 - parseFloat(chi.p)) * 100);
+  signals.push({
+    icon: '🔬', name: 'Chi-Square Test', value: 'p=' + chi.p,
+    conf: chiConf,
+    color: parseFloat(chi.p) < 0.05 ? '#34d399' : '#64748b',
+    strength: parseFloat(chi.p) < 0.05 ? 'strong' : parseFloat(chi.p) < 0.1 ? 'moderate' : 'weak'
+  });
+  
+  // Signal 7: Markov next-digit prediction
+  var lastDigit = digits[digits.length - 1];
+  var markov = novaMarkov(digits.slice(-500));
+  var nextProbs = markov[lastDigit];
+  var bestNext = nextProbs.indexOf(Math.max.apply(null, nextProbs));
+  signals.push({
+    icon: '🔗', name: 'Markov Prediction', value: 'Next likely: ' + bestNext + ' (' + (nextProbs[bestNext]*100).toFixed(0) + '%)',
+    conf: nextProbs[bestNext] * 100,
+    color: nextProbs[bestNext] > 0.15 ? '#60a5fa' : '#64748b',
+    strength: nextProbs[bestNext] > 0.15 ? 'strong' : 'moderate'
+  });
+
+  var masterEl = document.getElementById('novaSignalMaster');
+  if (masterEl) {
+    masterEl.innerHTML = signals.map(function(s) {
+      return '<div class="nova-signal-row ' + s.strength + '">' +
+        '<span class="nova-signal-icon">' + s.icon + '</span>' +
+        '<span class="nova-signal-name">' + s.name + '</span>' +
+        '<span class="nova-signal-value" style="color:' + s.color + '">' + s.value + '</span>' +
+        '<div class="nova-signal-bar-wrap"><div class="nova-signal-bar" style="width:' + s.conf + '%;background:' + s.color + '"></div></div>' +
+      '</div>';
+    }).join('');
+  }
+  
+  // Best trade
+  var best = novaBestSignal(digits);
+  nova.bestTrade = best;
+  if (best) {
+    var ctEl = document.getElementById('novaBtCt'); if (ctEl) ctEl.textContent = best.ct;
+    var barEl = document.getElementById('novaBtBarrier'); if (barEl) barEl.textContent = best.barrier !== null ? 'Barrier: ' + best.barrier : '';
+    var confEl = document.getElementById('novaBtConf'); if (confEl) confEl.textContent = best.conf.toFixed(1) + '% confidence';
+    var evEl = document.getElementById('novaBtEv'); if (evEl) evEl.textContent = 'EV: $' + best.ev.toFixed(4) + ' per $1 stake';
+function updateBannerHeight() {
+  var b = document.getElementById('riskBanner');
+  var h = (b && b.offsetHeight > 0) ? b.offsetHeight : 0;
+  document.documentElement.style.setProperty('--banner-h', h + 'px');
+}
+document.addEventListener('DOMContentLoaded', function() {
+  updateBannerHeight();
+  window.addEventListener('resize', updateBannerHeight);
+});
+function dismissRisk() {
+  var b = document.getElementById('riskBanner');
+  if (b) { b.style.display = 'none'; updateBannerHeight(); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BULK MATCHES & DIFFERS ENGINE
+// ═══════════════════════════════════════════════════════════
+var bmd = {
+  running: false,
+  scanning: false,
+  sym: null,
+  scanWs: {},
+  marketData: {}, // sym -> { ticks[], digitFreq[], digitTotal, confidence[] }
+  digitWins: Array(10).fill(0),
+  digitLosses: Array(10).fill(0),
+  digitSkip: Array(10).fill(0), // consecutive losses per digit
+  pnl: 0,
+  trades: 0,
+  wins: 0,
+  losses: 0,
+  roundsDone: 0,
+  consecutiveLossRounds: 0,
+  consecutiveWinRounds: 0,
+  chartData: [],
+  timerInterval: null,
+  startTime: null,
+  startBalance: 0,
+  allSyms: ['R_10','R_25','R_50','R_75','R_100','1HZ10V','1HZ25V','1HZ50V','1HZ75V','1HZ100V']
+};
+
+function bmdLog(msg, type) {
+  var log = document.getElementById('bmd-log');
+  if (!log) return;
+  var color = type === 'win' ? '#4caf50' : type === 'loss' ? '#f44336' : type === 'round' ? '#c9a84c' : '#888';
+  var el = document.createElement('div');
+  el.style.cssText = 'padding:3px 0;border-bottom:1px solid #111;font-size:.75rem;color:'+color;
+  el.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  log.insertBefore(el, log.firstChild);
+  if (log.children.length > 200) log.removeChild(log.lastChild);
+}
+
+function bmdSetStatus(type, text) {
+  var dot = document.getElementById('bmdDot');
+  var txt = document.getElementById('bmdStatusText');
+  if (dot) { dot.className = 'ai-dot ' + type; }
+  if (txt) txt.textContent = text;
+}
+
+function bmdUpdateStats() {
+  var wr = bmd.trades > 0 ? Math.round(bmd.wins / bmd.trades * 100) : 0;
+  var pnlEl = document.getElementById('bmd_pnl');
+  if (pnlEl) { pnlEl.textContent = (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2); pnlEl.style.color = bmd.pnl >= 0 ? '#4caf50' : '#f44336'; }
+  var setEl = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+  setEl('bmd_rounds_done', bmd.roundsDone);
+  setEl('bmd_trades', bmd.trades);
+  setEl('bmd_wins', bmd.wins);
+  setEl('bmd_losses', bmd.losses);
+  setEl('bmd_winrate', wr + '%');
+  // chart
+  bmd.chartData.push(bmd.pnl);
+  if (bmd.chartData.length > 60) bmd.chartData.shift();
+  bmdDrawChart();
+}
+
+function bmdDrawChart() {
+  var canvas = document.getElementById('bmd_pnl_chart');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.offsetWidth || 240;
+  canvas.width = w; canvas.height = 70;
+  ctx.clearRect(0, 0, w, 70);
+  var data = bmd.chartData;
+  if (data.length < 2) return;
+  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+  if (max === min) { max += 1; min -= 1; }
+  var range = max - min;
+  var step = w / (data.length - 1);
+  ctx.beginPath();
+  data.forEach(function(v, i) {
+    var x = i * step, y = 70 - ((v - min) / range * 60 + 5);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = bmd.pnl >= 0 ? '#4caf50' : '#f44336';
+  ctx.lineWidth = 2; ctx.stroke();
+  var zeroY = 70 - ((0 - min) / range * 60 + 5);
+  ctx.beginPath(); ctx.moveTo(0, zeroY); ctx.lineTo(w, zeroY);
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+}
+
+// ── DIGIT FREQUENCY ANALYSIS ───────────────────────────────
+function bmdAnalyzeMarket(sym, prices, decimals) {
+  var total = prices.length;
+
+  function countFreq(arr) {
+    var f = Array(10).fill(0);
+    arr.forEach(function(p){ f[Math.floor(p*Math.pow(10,decimals))%10]++; });
+    return f;
+  }
+  function getRanks(freq) {
+    var ranks = Array(10).fill(0);
+    freq.map(function(f,d){ return {d:d,f:f}; })
+      .sort(function(a,b){ return b.f-a.f; })
+      .forEach(function(x,i){ ranks[x.d]=i; });
+    return ranks;
+  }
+  function makeDigits(freq, tot) {
+    return freq.map(function(f,d){ return {d:d, count:f, pct: f/tot*100}; });
+  }
+
+  var freq1000 = countFreq(prices);
+  var freq100  = countFreq(prices.slice(-100));
+  var freq20   = countFreq(prices.slice(-20));
+
+  var r1000 = getRanks(freq1000);
+  var r100  = getRanks(freq100);
+  var r20   = getRanks(freq20);
+
+  // Combined rank: 50% long-term + 30% recent + 20% right now
+  var digitsCombined = Array.from({length:10}, function(_,d) {
+    var cr = r1000[d]*0.5 + r100[d]*0.3 + r20[d]*0.2;
+    return { d:d, count:freq1000[d], pct:freq1000[d]/total*100, pctAll:freq1000[d]/total*100, combinedRank:cr, scoreMatch:(9-cr)*11, scoreDiff:cr*11 };
+  });
+
+  return {
+    freq: freq1000, total: total,
+    confidence: digitsCombined,        // keep for chart compatibility
+    digits1000: makeDigits(freq1000, total),
+    digits100:  makeDigits(freq100,  100),
+    digits20:   makeDigits(freq20,   20),
+    digitsCombined: digitsCombined
+  };
+}
+
+function bmdPickDigits(analysis, mode) {
+  var pool;
+  if (mode && mode.indexOf('_20') !== -1) {
+    pool = analysis.digits20.slice().sort(function(a,b){ return b.count-a.count; });
+  } else if (mode && mode.indexOf('_100') !== -1) {
+    pool = analysis.digits100.slice().sort(function(a,b){ return b.count-a.count; });
+  } else if (mode && mode.indexOf('_1000') !== -1) {
+    pool = analysis.digits1000.slice().sort(function(a,b){ return b.count-a.count; });
+  } else {
+    // Combined — sort by combinedRank ascending (0 = best match)
+    pool = analysis.digitsCombined.slice().sort(function(a,b){ return a.combinedRank-b.combinedRank; });
+  }
+  // Match: only digits appearing 13%+ (edge above random 10%)
+  // Differ: only digits appearing 7% or less (edge below random 10%)
+  var matchDigits = pool.slice(0, 5).filter(function(d) { return d.pct >= 13; });
+  var diffDigits  = pool.slice(5).filter(function(d) { return d.pct <= 7; });
+
+  // Fallback: if no digits meet threshold, take top/bottom 3 anyway
+  if (matchDigits.length === 0) matchDigits = pool.slice(0, 3);
+  if (diffDigits.length === 0)  diffDigits  = pool.slice(7);
+
+  return { matchDigits: matchDigits, diffDigits: diffDigits };
+}
+
+function bmdRenderFreqChart(sym, analysis) {
+  var el = document.getElementById('bmd_freq_chart');
+  if (!el) return;
+  var conf = analysis.confidence;
+  var matchTop5 = conf.slice().sort(function(a,b){ return b.scoreMatch-a.scoreMatch; }).slice(0,5).map(function(c){ return c.d; });
+  var diffTop5  = conf.slice().sort(function(a,b){ return b.scoreDiff-a.scoreDiff;  }).slice(0,5).map(function(c){ return c.d; });
+  var maxPct = Math.max.apply(null, conf.map(function(c){ return c.pctAll; }));
+  el.innerHTML = conf.map(function(c) {
+    var cls = matchTop5.indexOf(c.d) !== -1 ? 'match' : diffTop5.indexOf(c.d) !== -1 ? 'diff' : 'neutral';
+    var h = Math.max(4, Math.round(c.pctAll / maxPct * 80));
+    return '<div class="bmd-freq-bar-wrap">'+
+      '<div class="bmd-freq-pct">'+c.pctAll.toFixed(1)+'%</div>'+
+      '<div class="bmd-freq-bar '+cls+'" style="height:'+h+'px"></div>'+
+      '<div class="bmd-freq-label">'+c.d+'</div>'+
+      '</div>';
+  }).join('');
+  var lbl = document.getElementById('bmd_market_label');
+  if (lbl) lbl.textContent = sym + ' — ' + analysis.total + ' ticks';
+}
+
+// ── MARKET SCANNER & AUTO-PICK ─────────────────────────────
+function bmdScanAll(callback) {
+  var syms = bmd.allSyms;
+  var done = 0;
+  bmdSetStatus('scanning', 'Scanning all markets...');
+  syms.forEach(function(sym) {
+    var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    ws.onopen = function() {
+      ws.send(JSON.stringify({ ticks_history: sym, count: 1000, end: 'latest', style: 'ticks' }));
+    };
+    ws.onmessage = function(e) {
+      var msg = JSON.parse(e.data);
+      if (msg.history && msg.history.prices) {
+        var prices = msg.history.prices.map(Number);
+        var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+        var analysis = bmdAnalyzeMarket(sym, prices, dec);
+        bmd.marketData[sym] = { prices: prices, decimals: dec, analysis: analysis };
+        ws.close();
+        done++;
+        if (done === syms.length) callback();
+      }
+    };
+    ws.onerror = function() { ws.close(); done++; if (done === syms.length) callback(); };
+  });
+}
+
+function bmdPickBestMarket() {
+  // Best market = highest deviation from uniform 10% across top 5 combined digits
+  var best = null, bestSkew = -1;
+  bmd.allSyms.forEach(function(sym) {
+    var d = bmd.marketData[sym];
+    if (!d) return;
+    var top5 = d.analysis.digitsCombined.slice().sort(function(a,b){ return a.combinedRank-b.combinedRank; }).slice(0,5);
+    var skew = top5.reduce(function(s,c){ return s + Math.abs(c.pct - 10); }, 0);
+    if (skew > bestSkew) { bestSkew = skew; best = sym; }
+  });
+  // Require minimum skew of 5% — flat markets have no edge
+  if (bestSkew < 5) { bmdLog('All markets flat (skew '+bestSkew.toFixed(1)+'%) — waiting', 'info'); return null; }
+  return best;
+}
+
+// ── TRADE EXECUTION ────────────────────────────────────────
+// Single WS per trade: proposal → buy → result on same connection (no second WS)
+function bmdPlaceTrade(sym, contractType, digit, stake, wsUrl, onResult) {
+  var done = false;
+  var timeout = setTimeout(function() {
+    if (!done) { done = true; ws.close(); onResult(false, -stake, digit, 'timeout'); }
+  }, 15000);
+  var ws = createWS(
+    function() {
+      wsSend(ws, {
+        proposal: 1, amount: parseFloat(stake.toFixed(2)), basis: 'stake',
+        contract_type: contractType, currency: state.currency || 'USD',
+        duration: 1, duration_unit: 't', underlying_symbol: sym, barrier: digit
+      });
+    },
+    function(msg) {
+      if (msg.error) {
+        if (!done) { done = true; clearTimeout(timeout); onResult(false, 0, digit, msg.error.message); ws.close(); }
+        return;
+      }
+      if (msg.proposal) {
+        wsSend(ws, { buy: msg.proposal.id, price: msg.proposal.ask_price });
+      }
+      if (msg.buy) {
+        wsSend(ws, { proposal_open_contract: 1, contract_id: msg.buy.contract_id, subscribe: 1 });
+      }
+      if (msg.proposal_open_contract && msg.proposal_open_contract.is_sold) {
+        if (!done) {
+          done = true;
+          clearTimeout(timeout);
+          var profit = parseFloat(msg.proposal_open_contract.profit);
+          onResult(profit >= 0, profit, digit, null);
+          ws.close();
+        }
+      }
+    },
+    function() { if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS closed'); } },
+    function() { if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS error'); } },
+    wsUrl
+  );
+}
+
+// ── ROUND EXECUTION ────────────────────────────────────────
+async function bmdRunRound(sym, contractType, digits, stake) {
+  var wsUrls = await Promise.all(digits.map(function() {
+    return getAuthWsUrl(state.bearerToken, state.accountId);
+  }));
+  return new Promise(function(resolve) {
+    var results = [];
+    var pending = digits.length;
+    if (pending === 0) { resolve([]); return; }
+
+    digits.forEach(function(digitConf, i) {
+      var d = digitConf.d;
+      bmdPlaceTrade(sym, contractType, d, stake, wsUrls[i], function(won, profit, digit, err) {
+        if (err) bmdLog('Trade error digit '+digit+': '+err, 'info');
+        results.push({ digit: digit, won: won, profit: profit });
+        pending--;
+        if (pending === 0) {
+          results.forEach(function(r) {
+            if (r.won) { bmd.digitWins[r.digit]++; bmd.digitSkip[r.digit] = Math.max(0, bmd.digitSkip[r.digit] - 1); }
+            else        { bmd.digitLosses[r.digit]++; bmd.digitSkip[r.digit]++; }
+            bmd.trades++;
+            if (r.won) bmd.wins++; else bmd.losses++;
+            bmd.pnl += r.profit;
+            bmdUpdateDigitCard(r.digit);
+          });
+          bmdUpdateStats();
+          resolve(results);
+        }
+      });
+    });
+  });
+}
+
+function bmdUpdateDigitCard(d) {
+  var w = document.getElementById('bmd_dw_' + d);
+  var l = document.getElementById('bmd_dl_' + d);
+  var card = document.getElementById('bmd_dperf_' + d);
+  if (w) w.textContent = bmd.digitWins[d] + 'W';
+  if (l) l.textContent = bmd.digitLosses[d] + 'L';
+  if (card) {
+    card.classList.remove('hot', 'cold');
+    if (bmd.digitWins[d] > bmd.digitLosses[d]) card.classList.add('hot');
+    else if (bmd.digitLosses[d] > bmd.digitWins[d]) card.classList.add('cold');
+  }
+}
+
+function bmdAddRoundCard(roundNum, results, roundPnl) {
+  var log = document.getElementById('bmd_rounds_log');
+  if (!log) return;
+  var icons = results.map(function(r) { return r.won ? '✅' : '❌'; }).join('');
+  var card = document.createElement('div');
+  card.className = 'bmd-round-card';
+  var pnlClass = roundPnl >= 0 ? 'pos' : 'neg';
+  card.innerHTML = '<span class="bmd-round-label">Round ' + roundNum + '</span>' +
+    '<span class="bmd-round-results">' + icons + '</span>' +
+    '<span class="bmd-round-pnl ' + pnlClass + '">' + (roundPnl >= 0 ? '+' : '') + roundPnl.toFixed(2) + '</span>';
+  log.insertBefore(card, log.firstChild);
+  if (log.children.length > 30) log.removeChild(log.lastChild);
+}
+
+// ── MAIN LOOP ──────────────────────────────────────────────
+async function bmdMainLoop() {
+  if (!bmd.running) return;
+
+  var maxRounds   = parseInt(document.getElementById('bmd_rounds').value) || 10;
+  var stopLossR   = parseInt(document.getElementById('bmd_stop_loss_rounds').value) || 3;
+  var tpRounds    = parseInt(document.getElementById('bmd_tp_rounds').value) || 5;
+  var stake       = parseFloat(document.getElementById('bmd_stake').value) || 1;
+  var minConf     = parseFloat(document.getElementById('bmd_min_conf').value) || 60;
+  var contractTypeSel = document.getElementById('bmd_type').value;
+  var balProtect  = parseFloat(document.getElementById('bmd_bal_protect').value) || 20;
+
+  if (bmd.roundsDone >= maxRounds) { bmdStop(); bmdLog('Max rounds reached', 'round'); return; }
+  if (bmd.consecutiveLossRounds >= stopLossR) { bmdStop(); bmdLog('Stop: ' + stopLossR + ' consecutive losing rounds', 'round'); return; }
+  if (bmd.consecutiveWinRounds >= tpRounds)  { bmdStop(); bmdLog('Take profit: ' + tpRounds + ' consecutive winning rounds', 'round'); return; }
+
+  // Balance protection
+  if (bmd.startBalance > 0) {
+    var balEl = document.getElementById('heroBalance');
+    var curBal = balEl ? parseFloat(balEl.textContent) : 0;
+    if (curBal > 0 && curBal < bmd.startBalance * (1 - balProtect / 100)) {
+      bmdStop(); bmdLog('Balance protection triggered', 'round'); return;
+    }
+  }
+
+  // Resolve symbol
+  var sym = document.getElementById('bmd_sym').value;
+  if (sym === 'auto') {
+    bmdSetStatus('scanning', 'Scanning all markets for best signal...');
+    await new Promise(function(res) { bmdScanAll(res); });
+    sym = bmdPickBestMarket();
+    if (!sym) { bmdLog('No market data — retrying in 3s', 'info'); setTimeout(bmdMainLoop, 3000); return; }
+    bmdLog('Auto-picked: ' + sym, 'info');
+  } else {
+    // Fetch fresh data for selected symbol
+    if (!bmd.marketData[sym]) {
+      bmdSetStatus('scanning', 'Fetching ' + sym + ' data...');
+      await new Promise(function(res) {
+        var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+        ws.onopen = function() { ws.send(JSON.stringify({ ticks_history: sym, count: 1000, end: 'latest', style: 'ticks' })); };
+        ws.onmessage = function(e) {
+          var msg = JSON.parse(e.data);
+          if (msg.history && msg.history.prices) {
+            var prices = msg.history.prices.map(Number);
+            var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+            var analysis = bmdAnalyzeMarket(sym, prices, dec);
+            bmd.marketData[sym] = { prices: prices, decimals: dec, analysis: analysis };
+            ws.close(); res();
+          }
+        };
+        ws.onerror = function() { ws.close(); res(); };
+      });
+    }
+  }
+
+  var d = bmd.marketData[sym];
+  if (!d) { bmdLog('No data for ' + sym, 'info'); setTimeout(bmdMainLoop, 2000); return; }
+
+  bmdRenderFreqChart(sym, d.analysis);
+
+  var picked = bmdPickDigits(d.analysis, contractTypeSel);
+  bmd.sym = sym;
+
+  var roundResults = [];
+  var roundPnl = 0;
+
+  if (contractTypeSel === 'DIGITMATCH' || contractTypeSel === 'both') {
+    if (picked.matchDigits.length === 0) { bmdLog('No match candidates', 'info'); }
+    else {
+      bmdSetStatus('running', 'Placing ' + picked.matchDigits.length + ' MATCH trades on ' + sym);
+      bmdLog('Round '+(bmd.roundsDone+1)+' MATCH: digits '+picked.matchDigits.map(function(c){return c.d;}).join(','), 'round');
+      var res = await bmdRunRound(sym, 'DIGITMATCH', picked.matchDigits, stake);
+      roundResults = roundResults.concat(res);
+    }
+  }
+  if (contractTypeSel === 'DIGITDIFF' || contractTypeSel === 'both') {
+    if (picked.diffDigits.length === 0) { bmdLog('No differ candidates', 'info'); }
+    else {
+      bmdSetStatus('running', 'Placing ' + picked.diffDigits.length + ' DIFFER trades on ' + sym);
+      bmdLog('Round '+(bmd.roundsDone+1)+' DIFFER: digits '+picked.diffDigits.map(function(c){return c.d;}).join(','), 'round');
+      var res2 = await bmdRunRound(sym, 'DIGITDIFF', picked.diffDigits, stake);
+      roundResults = roundResults.concat(res2);
+    }
+  }
+
+  if (roundResults.length > 0) {
+    roundPnl = roundResults.reduce(function(s, r) { return s + r.profit; }, 0);
+    var roundWins = roundResults.filter(function(r){ return r.won; }).length;
+    bmd.roundsDone++;
+    if (roundPnl >= 0) { bmd.consecutiveWinRounds++; bmd.consecutiveLossRounds = 0; }
+    else               { bmd.consecutiveLossRounds++; bmd.consecutiveWinRounds = 0; }
+    bmdAddRoundCard(bmd.roundsDone, roundResults, roundPnl);
+    bmdLog('Round '+bmd.roundsDone+' done: '+roundWins+'/'+roundResults.length+' won  P&L '+(roundPnl>=0?'+':'')+roundPnl.toFixed(2), 'round');
+    // Refresh balance and market data for next round
+    fetchBalance();
+    delete bmd.marketData[sym];
+  }
+
+  if (bmd.running) setTimeout(bmdMainLoop, 500);
+}
+
+// ── START / STOP ───────────────────────────────────────────
+async function bmdStart() {
+  if (!state.bearerToken || !state.accountId) { showToast('Please log in first'); return; }
+  if (bmd.running) return;
+
+  // Reset state
+  bmd.running = true;
+  bmd.pnl = 0; bmd.trades = 0; bmd.wins = 0; bmd.losses = 0;
+  bmd.roundsDone = 0; bmd.consecutiveLossRounds = 0; bmd.consecutiveWinRounds = 0;
+  bmd.digitWins = Array(10).fill(0); bmd.digitLosses = Array(10).fill(0);
+  bmd.digitSkip = Array(10).fill(0);
+  bmd.chartData = []; bmd.marketData = {};
+
+  // Reset digit cards
+  for (var d = 0; d <= 9; d++) { bmdUpdateDigitCard(d); }
+  document.getElementById('bmd_rounds_log').innerHTML = '';
+  document.getElementById('bmd-log').innerHTML = '';
+
+  var balEl = document.getElementById('heroBalance');
+  bmd.startBalance = balEl ? parseFloat(balEl.textContent) : 0;
+
+  document.getElementById('bmdStartBtn').style.display = 'none';
+  document.getElementById('bmdStopBtn').style.display = '';
+  bmdSetStatus('scanning', 'Starting...');
+
+  bmd.startTime = Date.now();
+  bmd.timerInterval = setInterval(function() {
+    var el = document.getElementById('bmd_timer');
+    if (!el) return;
+    var s = Math.floor((Date.now() - bmd.startTime) / 1000);
+    el.textContent = Math.floor(s/60) + 'm ' + (s%60) + 's';
+  }, 1000);
+
+  bmdLog('Session started', 'round');
+  bmdMainLoop();
+}
+
+function bmdStop() {
+  bmd.running = false;
+  if (bmd.timerInterval) { clearInterval(bmd.timerInterval); bmd.timerInterval = null; }
+  document.getElementById('bmdStartBtn').style.display = '';
+  document.getElementById('bmdStopBtn').style.display = 'none';
+  bmdSetStatus('idle', 'Stopped — P&L: ' + (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2));
+  bmdLog('Session stopped. Total P&L: ' + (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2), 'round');
+}
+// deploy trigger Wed Jun 10 21:37:59 EAST 2026
+  
+  grid.innerHTML = timeframes.map(function(tf) {
+    var sample = nova.digits.slice(-tf.n);
+    if (sample.length < 10) return '';
+    var under8 = sample.filter(function(d){return d < 8;}).length / sample.length * 100;
+    var over1  = sample.filter(function(d){return d > 1;}).length / sample.length * 100;
+    var entropy = novaShannonEntropy(sample);
+    var bias = under8 > 82 ? 'bull' : under8 < 78 ? 'bear' : 'neut';
+    var biasTxt = under8 > 82 ? '↑ UNDER8' : under8 < 78 ? '↓ OVER1' : '— NEUT';
+    return '<div class="nova-mtf-row">' +
+      '<span class="nova-mtf-label">' + tf.label + '</span>' +
+      '<div class="nova-mtf-bar-wrap"><div class="nova-mtf-bar" style="width:' + under8.toFixed(0) + '%;background:' + (bias==='bull'?'#34d399':bias==='bear'?'#ef4444':'#64748b') + '"></div></div>' +
+      '<span class="nova-mtf-val" style="color:' + (bias==='bull'?'#34d399':bias==='bear'?'#ef4444':'#94a3b8') + '">' + under8.toFixed(1) + '%</span>' +
+      '<span class="nova-mtf-signal ' + bias + '">' + biasTxt + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function novaRenderStreak() {
+  var digits = nova.digits;
+  if (digits.length < 10) return;
+  var streak = novaStreakAnalysis(digits);
+  var zscores = novaZScores(digits.slice(-200));
+  var hotDigit = zscores.indexOf(Math.max.apply(null, zscores));
+  var coldDigit = zscores.indexOf(Math.min.apply(null, zscores));
+  var grid = document.getElementById('novaStreakGrid');
+  if (!grid) return;
+  
+  var items = [
+    { label: 'Current Digit', val: streak.current, badge: 'streak ×' + streak.streak, badgeCls: streak.streak >= 4 ? 'background:rgba(167,139,250,0.2);color:#a78bfa' : 'background:rgba(148,163,184,0.1);color:#64748b' },
+    { label: 'Current Streak', val: '×' + streak.streak + ' (digit ' + streak.current + ')', badge: streak.streak >= 5 ? '🔥 HOT' : streak.streak >= 3 ? '⚡ ACTIVE' : '— LOW', badgeCls: streak.streak >= 5 ? 'background:rgba(239,68,68,0.2);color:#ef4444' : 'background:rgba(148,163,184,0.1);color:#64748b' },
+    { label: 'Hot Digit (over)', val: hotDigit, badge: '+' + zscores[hotDigit].toFixed(1) + 'σ', badgeCls: 'background:rgba(239,68,68,0.2);color:#ef4444' },
+    { label: 'Cold Digit (under)', val: coldDigit, badge: zscores[coldDigit].toFixed(1) + 'σ', badgeCls: 'background:rgba(52,211,153,0.2);color:#34d399' },
+    { label: 'High digits last 5 (8,9)', val: streak.highRun + '/5', badge: streak.highRun >= 3 ? '⚠️ CAUTION' : '✓ OK', badgeCls: streak.highRun >= 3 ? 'background:rgba(239,68,68,0.2);color:#ef4444' : 'background:rgba(52,211,153,0.15);color:#34d399' },
+    { label: 'Low digits last 5 (0,1)', val: streak.lowRun + '/5', badge: streak.lowRun >= 3 ? '⚠️ CAUTION' : '✓ OK', badgeCls: streak.lowRun >= 3 ? 'background:rgba(239,68,68,0.2);color:#ef4444' : 'background:rgba(52,211,153,0.15);color:#34d399' },
+    { label: 'Max Streak (last 50)', val: '×' + streak.maxStreak, badge: streak.maxStreak >= 6 ? '⚡ NOTABLE' : '— NORMAL', badgeCls: streak.maxStreak >= 6 ? 'background:rgba(251,191,36,0.2);color:#fbbf24' : 'background:rgba(148,163,184,0.1);color:#64748b' },
+  ];
+  
+  grid.innerHTML = items.map(function(item) {
+    return '<div class="nova-streak-item">' +
+      '<span class="nova-streak-label">' + item.label + '</span>' +
+      '<span class="nova-streak-val">' + item.val + '</span>' +
+      '<span class="nova-streak-badge" style="' + item.badgeCls + '">' + item.badge + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function novaRenderKelly() {
+  var digits = nova.digits.slice(-200);
+  if (digits.length < 30) return;
+  
+  // Calculate for DIGITUNDER 8 and DIGITOVER 1
+  var u8wins = digits.filter(function(d){return d < 8;}).length / digits.length;
+  var o1wins = digits.filter(function(d){return d > 1;}).length / digits.length;
+  
+  // Approximate payouts
+  var u8payout = 0.25; // ~25% for under 8
+  var o1payout = 0.25; // ~25% for over 1
+  
+  var u8kelly = novaKelly(u8wins, u8payout);
+  var o1kelly = novaKelly(o1wins, o1payout);
+  var u8ev    = novaExpectedValue(u8wins, u8payout, 1);
+  var o1ev    = novaExpectedValue(o1wins, o1payout, 1);
+  
+  var grid = document.getElementById('novaKellyGrid');
+  if (!grid) return;
+  
+  var items = [
+    { label: 'UNDER 8 Win Rate', val: (u8wins*100).toFixed(1) + '%', color: u8wins > 0.84 ? '#34d399' : '#94a3b8' },
+    { label: 'OVER 1 Win Rate',  val: (o1wins*100).toFixed(1) + '%', color: o1wins > 0.84 ? '#34d399' : '#94a3b8' },
+    { label: 'UNDER 8 Kelly %',  val: (u8kelly*100).toFixed(1) + '%', color: u8kelly > 0.02 ? '#a78bfa' : '#94a3b8' },
+    { label: 'OVER 1 Kelly %',   val: (o1kelly*100).toFixed(1) + '%', color: o1kelly > 0.02 ? '#a78bfa' : '#94a3b8' },
+    { label: 'UNDER 8 EV/$1',    val: (u8ev >= 0 ? '+' : '') + u8ev.toFixed(4), color: u8ev > 0 ? '#34d399' : '#ef4444' },
+    { label: 'OVER 1 EV/$1',     val: (o1ev >= 0 ? '+' : '') + o1ev.toFixed(4), color: o1ev > 0 ? '#34d399' : '#ef4444' },
+    { label: 'Break-even WR',     val: '84.0%', color: '#64748b' },
+  ];
+  grid.innerHTML = items.map(function(item) {
+    return '<div class="nova-kelly-item">' +
+      '<span class="nova-kelly-label">' + item.label + '</span>' +
+      '<span class="nova-kelly-val" style="color:' + item.color + '">' + item.val + '</span>' +
+    '</div>';
+  }).join('');
+}
+function updateBannerHeight() {
+  var b = document.getElementById('riskBanner');
+  var h = (b && b.offsetHeight > 0) ? b.offsetHeight : 0;
+  document.documentElement.style.setProperty('--banner-h', h + 'px');
+}
+document.addEventListener('DOMContentLoaded', function() {
+  updateBannerHeight();
+  window.addEventListener('resize', updateBannerHeight);
+});
+function dismissRisk() {
+  var b = document.getElementById('riskBanner');
+  if (b) { b.style.display = 'none'; updateBannerHeight(); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BULK MATCHES & DIFFERS ENGINE
+// ═══════════════════════════════════════════════════════════
+var bmd = {
+  running: false,
+  scanning: false,
+  sym: null,
+  scanWs: {},
+  marketData: {}, // sym -> { ticks[], digitFreq[], digitTotal, confidence[] }
+  digitWins: Array(10).fill(0),
+  digitLosses: Array(10).fill(0),
+  digitSkip: Array(10).fill(0), // consecutive losses per digit
+  pnl: 0,
+  trades: 0,
+  wins: 0,
+  losses: 0,
+  roundsDone: 0,
+  consecutiveLossRounds: 0,
+  consecutiveWinRounds: 0,
+  chartData: [],
+  timerInterval: null,
+  startTime: null,
+  startBalance: 0,
+  allSyms: ['R_10','R_25','R_50','R_75','R_100','1HZ10V','1HZ25V','1HZ50V','1HZ75V','1HZ100V']
+};
+
+function bmdLog(msg, type) {
+  var log = document.getElementById('bmd-log');
+  if (!log) return;
+  var color = type === 'win' ? '#4caf50' : type === 'loss' ? '#f44336' : type === 'round' ? '#c9a84c' : '#888';
+  var el = document.createElement('div');
+  el.style.cssText = 'padding:3px 0;border-bottom:1px solid #111;font-size:.75rem;color:'+color;
+  el.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  log.insertBefore(el, log.firstChild);
+  if (log.children.length > 200) log.removeChild(log.lastChild);
+}
+
+function bmdSetStatus(type, text) {
+  var dot = document.getElementById('bmdDot');
+  var txt = document.getElementById('bmdStatusText');
+  if (dot) { dot.className = 'ai-dot ' + type; }
+  if (txt) txt.textContent = text;
+}
+
+function bmdUpdateStats() {
+  var wr = bmd.trades > 0 ? Math.round(bmd.wins / bmd.trades * 100) : 0;
+  var pnlEl = document.getElementById('bmd_pnl');
+  if (pnlEl) { pnlEl.textContent = (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2); pnlEl.style.color = bmd.pnl >= 0 ? '#4caf50' : '#f44336'; }
+  var setEl = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+  setEl('bmd_rounds_done', bmd.roundsDone);
+  setEl('bmd_trades', bmd.trades);
+  setEl('bmd_wins', bmd.wins);
+  setEl('bmd_losses', bmd.losses);
+  setEl('bmd_winrate', wr + '%');
+  // chart
+  bmd.chartData.push(bmd.pnl);
+  if (bmd.chartData.length > 60) bmd.chartData.shift();
+  bmdDrawChart();
+}
+
+function bmdDrawChart() {
+  var canvas = document.getElementById('bmd_pnl_chart');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.offsetWidth || 240;
+  canvas.width = w; canvas.height = 70;
+  ctx.clearRect(0, 0, w, 70);
+  var data = bmd.chartData;
+  if (data.length < 2) return;
+  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+  if (max === min) { max += 1; min -= 1; }
+  var range = max - min;
+  var step = w / (data.length - 1);
+  ctx.beginPath();
+  data.forEach(function(v, i) {
+    var x = i * step, y = 70 - ((v - min) / range * 60 + 5);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = bmd.pnl >= 0 ? '#4caf50' : '#f44336';
+  ctx.lineWidth = 2; ctx.stroke();
+  var zeroY = 70 - ((0 - min) / range * 60 + 5);
+  ctx.beginPath(); ctx.moveTo(0, zeroY); ctx.lineTo(w, zeroY);
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+}
+
+// ── DIGIT FREQUENCY ANALYSIS ───────────────────────────────
+function bmdAnalyzeMarket(sym, prices, decimals) {
+  var total = prices.length;
+
+  function countFreq(arr) {
+    var f = Array(10).fill(0);
+    arr.forEach(function(p){ f[Math.floor(p*Math.pow(10,decimals))%10]++; });
+    return f;
+  }
+  function getRanks(freq) {
+    var ranks = Array(10).fill(0);
+    freq.map(function(f,d){ return {d:d,f:f}; })
+      .sort(function(a,b){ return b.f-a.f; })
+      .forEach(function(x,i){ ranks[x.d]=i; });
+    return ranks;
+  }
+  function makeDigits(freq, tot) {
+    return freq.map(function(f,d){ return {d:d, count:f, pct: f/tot*100}; });
+  }
+
+  var freq1000 = countFreq(prices);
+  var freq100  = countFreq(prices.slice(-100));
+  var freq20   = countFreq(prices.slice(-20));
+
+  var r1000 = getRanks(freq1000);
+  var r100  = getRanks(freq100);
+  var r20   = getRanks(freq20);
+
+  // Combined rank: 50% long-term + 30% recent + 20% right now
+  var digitsCombined = Array.from({length:10}, function(_,d) {
+    var cr = r1000[d]*0.5 + r100[d]*0.3 + r20[d]*0.2;
+    return { d:d, count:freq1000[d], pct:freq1000[d]/total*100, pctAll:freq1000[d]/total*100, combinedRank:cr, scoreMatch:(9-cr)*11, scoreDiff:cr*11 };
+  });
+
+  return {
+    freq: freq1000, total: total,
+    confidence: digitsCombined,        // keep for chart compatibility
+    digits1000: makeDigits(freq1000, total),
+    digits100:  makeDigits(freq100,  100),
+    digits20:   makeDigits(freq20,   20),
+    digitsCombined: digitsCombined
+  };
+}
+
+function bmdPickDigits(analysis, mode) {
+  var pool;
+  if (mode && mode.indexOf('_20') !== -1) {
+    pool = analysis.digits20.slice().sort(function(a,b){ return b.count-a.count; });
+  } else if (mode && mode.indexOf('_100') !== -1) {
+    pool = analysis.digits100.slice().sort(function(a,b){ return b.count-a.count; });
+  } else if (mode && mode.indexOf('_1000') !== -1) {
+    pool = analysis.digits1000.slice().sort(function(a,b){ return b.count-a.count; });
+  } else {
+    // Combined — sort by combinedRank ascending (0 = best match)
+    pool = analysis.digitsCombined.slice().sort(function(a,b){ return a.combinedRank-b.combinedRank; });
+  }
+  // Match: only digits appearing 13%+ (edge above random 10%)
+  // Differ: only digits appearing 7% or less (edge below random 10%)
+  var matchDigits = pool.slice(0, 5).filter(function(d) { return d.pct >= 13; });
+  var diffDigits  = pool.slice(5).filter(function(d) { return d.pct <= 7; });
+
+  // Fallback: if no digits meet threshold, take top/bottom 3 anyway
+  if (matchDigits.length === 0) matchDigits = pool.slice(0, 3);
+  if (diffDigits.length === 0)  diffDigits  = pool.slice(7);
+
+  return { matchDigits: matchDigits, diffDigits: diffDigits };
+}
+
+function bmdRenderFreqChart(sym, analysis) {
+  var el = document.getElementById('bmd_freq_chart');
+  if (!el) return;
+  var conf = analysis.confidence;
+  var matchTop5 = conf.slice().sort(function(a,b){ return b.scoreMatch-a.scoreMatch; }).slice(0,5).map(function(c){ return c.d; });
+  var diffTop5  = conf.slice().sort(function(a,b){ return b.scoreDiff-a.scoreDiff;  }).slice(0,5).map(function(c){ return c.d; });
+  var maxPct = Math.max.apply(null, conf.map(function(c){ return c.pctAll; }));
+  el.innerHTML = conf.map(function(c) {
+    var cls = matchTop5.indexOf(c.d) !== -1 ? 'match' : diffTop5.indexOf(c.d) !== -1 ? 'diff' : 'neutral';
+    var h = Math.max(4, Math.round(c.pctAll / maxPct * 80));
+    return '<div class="bmd-freq-bar-wrap">'+
+      '<div class="bmd-freq-pct">'+c.pctAll.toFixed(1)+'%</div>'+
+      '<div class="bmd-freq-bar '+cls+'" style="height:'+h+'px"></div>'+
+      '<div class="bmd-freq-label">'+c.d+'</div>'+
+      '</div>';
+  }).join('');
+  var lbl = document.getElementById('bmd_market_label');
+  if (lbl) lbl.textContent = sym + ' — ' + analysis.total + ' ticks';
+}
+
+// ── MARKET SCANNER & AUTO-PICK ─────────────────────────────
+function bmdScanAll(callback) {
+  var syms = bmd.allSyms;
+  var done = 0;
+  bmdSetStatus('scanning', 'Scanning all markets...');
+  syms.forEach(function(sym) {
+    var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    ws.onopen = function() {
+      ws.send(JSON.stringify({ ticks_history: sym, count: 1000, end: 'latest', style: 'ticks' }));
+    };
+    ws.onmessage = function(e) {
+      var msg = JSON.parse(e.data);
+      if (msg.history && msg.history.prices) {
+        var prices = msg.history.prices.map(Number);
+        var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+        var analysis = bmdAnalyzeMarket(sym, prices, dec);
+        bmd.marketData[sym] = { prices: prices, decimals: dec, analysis: analysis };
+        ws.close();
+        done++;
+        if (done === syms.length) callback();
+      }
+    };
+    ws.onerror = function() { ws.close(); done++; if (done === syms.length) callback(); };
+  });
+}
+
+function bmdPickBestMarket() {
+  // Best market = highest deviation from uniform 10% across top 5 combined digits
+  var best = null, bestSkew = -1;
+  bmd.allSyms.forEach(function(sym) {
+    var d = bmd.marketData[sym];
+    if (!d) return;
+    var top5 = d.analysis.digitsCombined.slice().sort(function(a,b){ return a.combinedRank-b.combinedRank; }).slice(0,5);
+    var skew = top5.reduce(function(s,c){ return s + Math.abs(c.pct - 10); }, 0);
+    if (skew > bestSkew) { bestSkew = skew; best = sym; }
+  });
+  // Require minimum skew of 5% — flat markets have no edge
+  if (bestSkew < 5) { bmdLog('All markets flat (skew '+bestSkew.toFixed(1)+'%) — waiting', 'info'); return null; }
+  return best;
+}
+
+// ── TRADE EXECUTION ────────────────────────────────────────
+// Single WS per trade: proposal → buy → result on same connection (no second WS)
+function bmdPlaceTrade(sym, contractType, digit, stake, wsUrl, onResult) {
+  var done = false;
+  var timeout = setTimeout(function() {
+    if (!done) { done = true; ws.close(); onResult(false, -stake, digit, 'timeout'); }
+  }, 15000);
+  var ws = createWS(
+    function() {
+      wsSend(ws, {
+        proposal: 1, amount: parseFloat(stake.toFixed(2)), basis: 'stake',
+        contract_type: contractType, currency: state.currency || 'USD',
+        duration: 1, duration_unit: 't', underlying_symbol: sym, barrier: digit
+      });
+    },
+    function(msg) {
+      if (msg.error) {
+        if (!done) { done = true; clearTimeout(timeout); onResult(false, 0, digit, msg.error.message); ws.close(); }
+        return;
+      }
+      if (msg.proposal) {
+        wsSend(ws, { buy: msg.proposal.id, price: msg.proposal.ask_price });
+      }
+      if (msg.buy) {
+        wsSend(ws, { proposal_open_contract: 1, contract_id: msg.buy.contract_id, subscribe: 1 });
+      }
+      if (msg.proposal_open_contract && msg.proposal_open_contract.is_sold) {
+        if (!done) {
+          done = true;
+          clearTimeout(timeout);
+          var profit = parseFloat(msg.proposal_open_contract.profit);
+          onResult(profit >= 0, profit, digit, null);
+          ws.close();
+        }
+      }
+    },
+    function() { if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS closed'); } },
+    function() { if (!done) { done = true; clearTimeout(timeout); onResult(false, -stake, digit, 'WS error'); } },
+    wsUrl
+  );
+}
+
+// ── ROUND EXECUTION ────────────────────────────────────────
+async function bmdRunRound(sym, contractType, digits, stake) {
+  var wsUrls = await Promise.all(digits.map(function() {
+    return getAuthWsUrl(state.bearerToken, state.accountId);
+  }));
+  return new Promise(function(resolve) {
+    var results = [];
+    var pending = digits.length;
+    if (pending === 0) { resolve([]); return; }
+
+    digits.forEach(function(digitConf, i) {
+      var d = digitConf.d;
+      bmdPlaceTrade(sym, contractType, d, stake, wsUrls[i], function(won, profit, digit, err) {
+        if (err) bmdLog('Trade error digit '+digit+': '+err, 'info');
+        results.push({ digit: digit, won: won, profit: profit });
+        pending--;
+        if (pending === 0) {
+          results.forEach(function(r) {
+            if (r.won) { bmd.digitWins[r.digit]++; bmd.digitSkip[r.digit] = Math.max(0, bmd.digitSkip[r.digit] - 1); }
+            else        { bmd.digitLosses[r.digit]++; bmd.digitSkip[r.digit]++; }
+            bmd.trades++;
+            if (r.won) bmd.wins++; else bmd.losses++;
+            bmd.pnl += r.profit;
+            bmdUpdateDigitCard(r.digit);
+          });
+          bmdUpdateStats();
+          resolve(results);
+        }
+      });
+    });
+  });
+}
+
+function bmdUpdateDigitCard(d) {
+  var w = document.getElementById('bmd_dw_' + d);
+  var l = document.getElementById('bmd_dl_' + d);
+  var card = document.getElementById('bmd_dperf_' + d);
+  if (w) w.textContent = bmd.digitWins[d] + 'W';
+  if (l) l.textContent = bmd.digitLosses[d] + 'L';
+  if (card) {
+    card.classList.remove('hot', 'cold');
+    if (bmd.digitWins[d] > bmd.digitLosses[d]) card.classList.add('hot');
+    else if (bmd.digitLosses[d] > bmd.digitWins[d]) card.classList.add('cold');
+  }
+}
+
+function bmdAddRoundCard(roundNum, results, roundPnl) {
+  var log = document.getElementById('bmd_rounds_log');
+  if (!log) return;
+  var icons = results.map(function(r) { return r.won ? '✅' : '❌'; }).join('');
+  var card = document.createElement('div');
+  card.className = 'bmd-round-card';
+  var pnlClass = roundPnl >= 0 ? 'pos' : 'neg';
+  card.innerHTML = '<span class="bmd-round-label">Round ' + roundNum + '</span>' +
+    '<span class="bmd-round-results">' + icons + '</span>' +
+    '<span class="bmd-round-pnl ' + pnlClass + '">' + (roundPnl >= 0 ? '+' : '') + roundPnl.toFixed(2) + '</span>';
+  log.insertBefore(card, log.firstChild);
+  if (log.children.length > 30) log.removeChild(log.lastChild);
+}
+
+// ── MAIN LOOP ──────────────────────────────────────────────
+async function bmdMainLoop() {
+  if (!bmd.running) return;
+
+  var maxRounds   = parseInt(document.getElementById('bmd_rounds').value) || 10;
+  var stopLossR   = parseInt(document.getElementById('bmd_stop_loss_rounds').value) || 3;
+  var tpRounds    = parseInt(document.getElementById('bmd_tp_rounds').value) || 5;
+  var stake       = parseFloat(document.getElementById('bmd_stake').value) || 1;
+  var minConf     = parseFloat(document.getElementById('bmd_min_conf').value) || 60;
+  var contractTypeSel = document.getElementById('bmd_type').value;
+  var balProtect  = parseFloat(document.getElementById('bmd_bal_protect').value) || 20;
+
+  if (bmd.roundsDone >= maxRounds) { bmdStop(); bmdLog('Max rounds reached', 'round'); return; }
+  if (bmd.consecutiveLossRounds >= stopLossR) { bmdStop(); bmdLog('Stop: ' + stopLossR + ' consecutive losing rounds', 'round'); return; }
+  if (bmd.consecutiveWinRounds >= tpRounds)  { bmdStop(); bmdLog('Take profit: ' + tpRounds + ' consecutive winning rounds', 'round'); return; }
+
+  // Balance protection
+  if (bmd.startBalance > 0) {
+    var balEl = document.getElementById('heroBalance');
+    var curBal = balEl ? parseFloat(balEl.textContent) : 0;
+    if (curBal > 0 && curBal < bmd.startBalance * (1 - balProtect / 100)) {
+      bmdStop(); bmdLog('Balance protection triggered', 'round'); return;
+    }
+  }
+
+  // Resolve symbol
+  var sym = document.getElementById('bmd_sym').value;
+  if (sym === 'auto') {
+    bmdSetStatus('scanning', 'Scanning all markets for best signal...');
+    await new Promise(function(res) { bmdScanAll(res); });
+    sym = bmdPickBestMarket();
+    if (!sym) { bmdLog('No market data — retrying in 3s', 'info'); setTimeout(bmdMainLoop, 3000); return; }
+    bmdLog('Auto-picked: ' + sym, 'info');
+  } else {
+    // Fetch fresh data for selected symbol
+    if (!bmd.marketData[sym]) {
+      bmdSetStatus('scanning', 'Fetching ' + sym + ' data...');
+      await new Promise(function(res) {
+        var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+        ws.onopen = function() { ws.send(JSON.stringify({ ticks_history: sym, count: 1000, end: 'latest', style: 'ticks' })); };
+        ws.onmessage = function(e) {
+          var msg = JSON.parse(e.data);
+          if (msg.history && msg.history.prices) {
+            var prices = msg.history.prices.map(Number);
+            var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+            var analysis = bmdAnalyzeMarket(sym, prices, dec);
+            bmd.marketData[sym] = { prices: prices, decimals: dec, analysis: analysis };
+            ws.close(); res();
+          }
+        };
+        ws.onerror = function() { ws.close(); res(); };
+      });
+    }
+  }
+
+  var d = bmd.marketData[sym];
+  if (!d) { bmdLog('No data for ' + sym, 'info'); setTimeout(bmdMainLoop, 2000); return; }
+
+  bmdRenderFreqChart(sym, d.analysis);
+
+  var picked = bmdPickDigits(d.analysis, contractTypeSel);
+  bmd.sym = sym;
+
+  var roundResults = [];
+  var roundPnl = 0;
+
+  if (contractTypeSel === 'DIGITMATCH' || contractTypeSel === 'both') {
+    if (picked.matchDigits.length === 0) { bmdLog('No match candidates', 'info'); }
+    else {
+      bmdSetStatus('running', 'Placing ' + picked.matchDigits.length + ' MATCH trades on ' + sym);
+      bmdLog('Round '+(bmd.roundsDone+1)+' MATCH: digits '+picked.matchDigits.map(function(c){return c.d;}).join(','), 'round');
+      var res = await bmdRunRound(sym, 'DIGITMATCH', picked.matchDigits, stake);
+      roundResults = roundResults.concat(res);
+    }
+  }
+  if (contractTypeSel === 'DIGITDIFF' || contractTypeSel === 'both') {
+    if (picked.diffDigits.length === 0) { bmdLog('No differ candidates', 'info'); }
+    else {
+      bmdSetStatus('running', 'Placing ' + picked.diffDigits.length + ' DIFFER trades on ' + sym);
+      bmdLog('Round '+(bmd.roundsDone+1)+' DIFFER: digits '+picked.diffDigits.map(function(c){return c.d;}).join(','), 'round');
+      var res2 = await bmdRunRound(sym, 'DIGITDIFF', picked.diffDigits, stake);
+      roundResults = roundResults.concat(res2);
+    }
+  }
+
+  if (roundResults.length > 0) {
+    roundPnl = roundResults.reduce(function(s, r) { return s + r.profit; }, 0);
+    var roundWins = roundResults.filter(function(r){ return r.won; }).length;
+    bmd.roundsDone++;
+    if (roundPnl >= 0) { bmd.consecutiveWinRounds++; bmd.consecutiveLossRounds = 0; }
+    else               { bmd.consecutiveLossRounds++; bmd.consecutiveWinRounds = 0; }
+    bmdAddRoundCard(bmd.roundsDone, roundResults, roundPnl);
+    bmdLog('Round '+bmd.roundsDone+' done: '+roundWins+'/'+roundResults.length+' won  P&L '+(roundPnl>=0?'+':'')+roundPnl.toFixed(2), 'round');
+    // Refresh balance and market data for next round
+    fetchBalance();
+    delete bmd.marketData[sym];
+  }
+
+  if (bmd.running) setTimeout(bmdMainLoop, 500);
+}
+
+// ── START / STOP ───────────────────────────────────────────
+async function bmdStart() {
+  if (!state.bearerToken || !state.accountId) { showToast('Please log in first'); return; }
+  if (bmd.running) return;
+
+  // Reset state
+  bmd.running = true;
+  bmd.pnl = 0; bmd.trades = 0; bmd.wins = 0; bmd.losses = 0;
+  bmd.roundsDone = 0; bmd.consecutiveLossRounds = 0; bmd.consecutiveWinRounds = 0;
+  bmd.digitWins = Array(10).fill(0); bmd.digitLosses = Array(10).fill(0);
+  bmd.digitSkip = Array(10).fill(0);
+  bmd.chartData = []; bmd.marketData = {};
+
+  // Reset digit cards
+  for (var d = 0; d <= 9; d++) { bmdUpdateDigitCard(d); }
+  document.getElementById('bmd_rounds_log').innerHTML = '';
+  document.getElementById('bmd-log').innerHTML = '';
+
+  var balEl = document.getElementById('heroBalance');
+  bmd.startBalance = balEl ? parseFloat(balEl.textContent) : 0;
+
+  document.getElementById('bmdStartBtn').style.display = 'none';
+  document.getElementById('bmdStopBtn').style.display = '';
+  bmdSetStatus('scanning', 'Starting...');
+
+  bmd.startTime = Date.now();
+  bmd.timerInterval = setInterval(function() {
+    var el = document.getElementById('bmd_timer');
+    if (!el) return;
+    var s = Math.floor((Date.now() - bmd.startTime) / 1000);
+    el.textContent = Math.floor(s/60) + 'm ' + (s%60) + 's';
+  }, 1000);
+
+  bmdLog('Session started', 'round');
+  bmdMainLoop();
+}
+
+function bmdStop() {
+  bmd.running = false;
+  if (bmd.timerInterval) { clearInterval(bmd.timerInterval); bmd.timerInterval = null; }
+  document.getElementById('bmdStartBtn').style.display = '';
+  document.getElementById('bmdStopBtn').style.display = 'none';
+  bmdSetStatus('idle', 'Stopped — P&L: ' + (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2));
+  bmdLog('Session stopped. Total P&L: ' + (bmd.pnl >= 0 ? '+' : '') + bmd.pnl.toFixed(2), 'round');
+}
+// deploy trigger Wed Jun 10 21:37:59 EAST 2026
+  
+  grid.innerHTML = items.map(function(item) {
+    return '<div class="nova-kelly-item">' +
+      '<span class="nova-kelly-label">' + item.label + '</span>' +
+      '<span class="nova-kelly-val" style="color:' + item.color + '">' + item.val + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function novaRenderBarriers() {
+  var digits = nova.digits.slice(-500);
+  if (digits.length < 30) return;
+  var wrap = document.getElementById('novaBarrierTable');
+  if (!wrap) return;
+  
+  var rows = '';
+  for (var b = 0; b <= 9; b++) {
+    // OVER b
+    var overWins  = digits.filter(function(d){return d > b;}).length;
+    var overRate  = (overWins / digits.length * 100).toFixed(1);
+    var overPayout = ((10 - b - 1) / 10 * 0.94).toFixed(2);
+    var overEV    = novaExpectedValue(overWins/digits.length, parseFloat(overPayout), 1);
+    var overRec   = overEV > 0.01 ? 'strong' : overEV > 0 ? 'good' : 'weak';
+    var overRecTxt= overEV > 0.01 ? '✓ TRADE' : overEV > 0 ? '~ WEAK' : '✗ SKIP';
+    
+    // UNDER b
+    var underWins = digits.filter(function(d){return d < b;}).length;
+    var underRate = (underWins / digits.length * 100).toFixed(1);
+    var underPayout = ((b) / 10 * 0.94).toFixed(2);
+    var underEV   = novaExpectedValue(underWins/digits.length, parseFloat(underPayout), 1);
+    var underRec  = underEV > 0.01 ? 'strong' : underEV > 0 ? 'good' : 'weak';
+    var underRecTxt= underEV > 0.01 ? '✓ TRADE' : underEV > 0 ? '~ WEAK' : '✗ SKIP';
+    
+    rows += '<tr>' +
+      '<td style="color:#a78bfa;font-weight:700">' + b + '</td>' +
+      '<td style="color:#60a5fa">OVER ' + b + '</td>' +
+      '<td>' + overRate + '%</td>' +
+      '<td>' + overPayout + '</td>' +
+      '<td style="color:' + (overEV>0?'#34d399':'#ef4444') + '">' + (overEV>=0?'+':'') + overEV.toFixed(4) + '</td>' +
+      '<td><span class="nova-barrier-rec ' + overRec + '">' + overRecTxt + '</span></td>' +
+      '<td style="color:#f97316">UNDER ' + b + '</td>' +
+      '<td>' + underRate + '%</td>' +
+      '<td>' + underPayout + '</td>' +
+      '<td style="color:' + (underEV>0?'#34d399':'#ef4444') + '">' + (underEV>=0?'+':'') + underEV.toFixed(4) + '</td>' +
+      '<td><span class="nova-barrier-rec ' + underRec + '">' + underRecTxt + '</span></td>' +
+    '</tr>';
+  }
+  
+  wrap.innerHTML = '<table class="nova-barrier-tbl">' +
+    '<tr><th>D</th><th>Contract</th><th>Win%</th><th>Payout</th><th>EV</th><th>Signal</th>' +
+    '<th>Contract</th><th>Win%</th><th>Payout</th><th>EV</th><th>Signal</th></tr>' +
+    rows + '</table>';
+}
+
+function novaRenderStream() {
+  var wrap = document.getElementById('novaStreamWrap');
+  if (!wrap) return;
+  var last = nova.digits.slice(-80);
+  wrap.innerHTML = last.map(function(d, i) {
+    var cls = 'nova-stream-digit d' + d;
+    if (i === last.length - 1) cls += ' new';
+    return '<div class="' + cls + '">' + d + '</div>';
+  }).join('');
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function novaRenderAutocorr() {
+  var canvas = document.getElementById('novaAutoCorCanvas');
+  if (!canvas || !canvas.getContext) return;
+  var digits = nova.digits.slice(-500);
+  if (digits.length < 25) return;
+  var acf = novaAutocorr(digits, 20);
+  var ctx = canvas.getContext('2d');
+  var W = canvas.offsetWidth || 300;
+  canvas.width = W; canvas.height = 120;
+  ctx.clearRect(0, 0, W, 120);
+  
+  var barW = (W - 40) / 20;
+  var midY = 60;
+  
+  // Zero line
+  ctx.beginPath(); ctx.moveTo(30, midY); ctx.lineTo(W, midY);
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+  
+  // Significance bounds (±1.96/√n)
+  var sig = 1.96 / Math.sqrt(digits.length);
+  var sigY = sig * 50;
+  ctx.beginPath(); ctx.moveTo(30, midY - sigY); ctx.lineTo(W, midY - sigY);
+  ctx.strokeStyle = 'rgba(239,68,68,0.3)'; ctx.setLineDash([4,4]); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(30, midY + sigY); ctx.lineTo(W, midY + sigY);
+  ctx.stroke(); ctx.setLineDash([]);
+  
+  // Bars
+  acf.forEach(function(v, i) {
+    var x = 30 + i * barW + barW * 0.1;
+    var h = v * 50;
+    var color = Math.abs(v) > sig ? 'rgba(167,139,250,0.8)' : 'rgba(100,116,139,0.5)';
+    ctx.fillStyle = color;
+    if (h >= 0) ctx.fillRect(x, midY - h, barW * 0.8, h);
+    else ctx.fillRect(x, midY, barW * 0.8, -h);
+    // Lag label
+    if ((i+1) % 5 === 0) {
+      ctx.fillStyle = '#555';
+      ctx.font = '9px monospace';
+      ctx.fillText(i+1, x + barW*0.2, 118);
+    }
+  });
+  
+  // Y labels
+  ctx.fillStyle = '#444'; ctx.font = '9px monospace';
+  ctx.fillText('1.0', 2, 14); ctx.fillText('0', 8, midY+4); ctx.fillText('-1', 2, 114);
+}
+
+function novaRenderRegime() {
+  var regime = novaRegime(nova.ticks, nova.digits);
+  var wrap = document.getElementById('novaRegimeWrap');
+  if (!wrap) return;
+  
+  wrap.innerHTML = 
+    '<div class="nova-regime-gauge" style="border-color:' + regime.color + '33;background:' + regime.color + '0a">' +
+      '<div class="nova-regime-name" style="color:' + regime.color + '">' + regime.name + '</div>' +
+      '<div class="nova-regime-desc">' + regime.desc + '</div>' +
+    '</div>' +
+    '<div class="nova-regime-stats">' +
+      '<div class="nova-regime-stat"><span class="nova-regime-stat-label">Entropy</span><span class="nova-regime-stat-val" style="color:#a78bfa">' + (regime.entropy||0).toFixed(3) + '</span></div>' +
+      '<div class="nova-regime-stat"><span class="nova-regime-stat-label">Hurst</span><span class="nova-regime-stat-val" style="color:#fbbf24">' + (regime.hurst||0).toFixed(3) + '</span></div>' +
+      '<div class="nova-regime-stat"><span class="nova-regime-stat-label">Tick Speed</span><span class="nova-regime-stat-val" style="color:#60a5fa">' + (regime.speed ? Math.round(regime.speed) + 'ms' : '—') + '</span></div>' +
+      '<div class="nova-regime-stat"><span class="nova-regime-stat-label">Ticks Loaded</span><span class="nova-regime-stat-val" style="color:#34d399">' + nova.digits.length + '</span></div>' +
+    '</div>';
+}
+
+// ── SCANNER ──────────────────────────────────────────────────
+
+function novaScanAllMarkets() {
+  var symbols = ['R_10','R_25','R_50','R_75','R_100','1HZ10V','1HZ25V','1HZ50V','1HZ75V','1HZ100V'];
+  var el = document.getElementById('novaScannerResults');
+  if (el) el.innerHTML = '<div class="nova-scan-idle">Scanning ' + symbols.length + ' markets...</div>';
+  
+  var results = [];
+  var done = 0;
+  
+  symbols.forEach(function(sym) {
+    var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    ws.onopen = function() {
+      ws.send(JSON.stringify({ ticks_history: sym, count: 500, end: 'latest', style: 'ticks' }));
+    };
+    ws.onmessage = function(e) {
+      var msg = JSON.parse(e.data);
+      if (msg.history && msg.history.prices) {
+        var ticks = msg.history.prices.map(Number);
+        var dec = sym.indexOf('1HZ') !== -1 ? 2 : 2;
+        var digits = ticks.map(function(p){ return Math.floor(p * Math.pow(10, dec)) % 10; });
+        var best = novaBestSignal(digits);
+        var entropy = novaShannonEntropy(digits.slice(-100));
+        var hurst = novaHurst(digits.slice(-100));
+        var score = best ? (best.conf * 0.5 + (3.322 - entropy) / 3.322 * 30 + Math.abs(hurst - 0.5) * 40) : 0;
+        results.push({ sym: sym, score: score, best: best, entropy: entropy, hurst: hurst });
+        ws.close();
+        done++;
+        if (done === symbols.length) novaRenderScanResults(results);
+      }
+    };
+    ws.onerror = function() { done++; ws.close(); if (done === symbols.length) novaRenderScanResults(results); };
+  });
+}
+
+function novaRenderScanResults(results) {
+  results.sort(function(a,b){ return b.score - a.score; });
+  var el = document.getElementById('novaScannerResults');
+  if (!el) return;
+  
+  el.innerHTML = results.map(function(r, i) {
+    var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '.';
+    var ct = r.best ? r.best.ct : '—';
+    var ctColor = ct.includes('UNDER') ? '#34d399' : ct.includes('OVER') ? '#60a5fa' : '#a78bfa';
+    var barPct = Math.min(100, r.score);
+    return '<div class="nova-scanner-result-row">' +
+      '<span class="nova-scan-sym">' + medal + ' ' + r.sym + '</span>' +
+      '<div class="nova-scan-bar-wrap"><div class="nova-scan-bar" style="width:' + barPct + '%;background:' + ctColor + '"></div></div>' +
+      '<span class="nova-scan-score" style="color:' + ctColor + '">' + r.score.toFixed(1) + '</span>' +
+      '<span class="nova-scan-ct" style="background:' + ctColor + '22;color:' + ctColor + '">' + (r.best ? r.best.ct + (r.best.barrier!==null?' '+r.best.barrier:'') : '—') + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// ── TRADE EXECUTION ──────────────────────────────────────────
+
+async function novaExecuteTrade() {
+  if (!nova.bestTrade) { showToast('No signal available'); return; }
+  if (!state.bearerToken) { showToast('Please log in first'); return; }
+  var stake = parseFloat(prompt('Stake amount ($):', '1') || '0');
+  if (!stake || stake <= 0) return;
+  
+  try {
+    var wsUrl = await getAuthWsUrl(state.bearerToken, state.accountId);
+    var ws = new WebSocket(wsUrl);
+    ws.onopen = function() {
+      var proposal = {
+        proposal: 1, amount: stake, basis: 'stake',
+        contract_type: nova.bestTrade.ct,
+        currency: state.currency || 'USD',
+        duration: 1, duration_unit: 't',
+        underlying_symbol: nova.market
+      };
+      if (nova.bestTrade.barrier !== null) proposal.barrier = nova.bestTrade.barrier;
+      ws.send(JSON.stringify(proposal));
+    };
+    ws.onmessage = function(e) {
+      var msg = JSON.parse(e.data);
+      if (msg.proposal) {
+        ws.send(JSON.stringify({ buy: msg.proposal.id, price: msg.proposal.ask_price }));
+      }
+      if (msg.buy) {
+        showToast('Trade placed: ' + nova.bestTrade.ct + ' — Contract #' + msg.buy.contract_id);
+        ws.close();
+      }
+      if (msg.error) { showToast('Error: ' + msg.error.message); ws.close(); }
+    };
+  } catch(err) {
+    showToast('Trade failed: ' + err.message);
   }
 }
 

@@ -254,7 +254,8 @@
     <section id="page-analysis" class="page">
     <div class="analysis-tabs">
       <button class="atab active" id="atab-dcircle" onclick="switchAnalysisTab('dcircle')">DCIRCLE</button>
-      <button class="atab" id="atab-tool" onclick="switchAnalysisTab('tool')">AnalysisTool</button>
+      <button class="atab" id="atab-tool" onclick="switchAnalysisTab('tool')">Analysis Tool</button>
+      <button class="atab" id="atab-nova" onclick="switchAnalysisTab('nova')">⚡ Nova Engine</button>
     </div>
     <div id="analysis-dcircle" class="analysis-tab-content active">
       <div class="tool-controls">
@@ -293,103 +294,247 @@
       <div id="marketsContainer" class="markets-container"></div>
     </div>
     <div id="analysis-tool" class="analysis-tab-content">
-  <div class="atool-wrapper">
-    <h2 class="atool-title">NovaTrade Analysistool 🌐</h2>
-    <div class="atool-top-row">
-      <div class="atool-field">
-        <label>Synthetic Market</label>
-        <select id="atoolMarket" onchange="atoolMarketChange()">
-          <option value="R_10">Volatility 10</option>
-          <option value="R_25">Volatility 25</option>
-          <option value="R_50">Volatility 50</option>
-          <option value="R_75">Volatility 75</option>
-          <option value="R_100">Volatility 100</option>
-          <option value="1HZ10V">Volatility 10 (1s) Index</option>
-          <option value="1HZ25V">Volatility 25 (1s) Index</option>
-          <option value="1HZ50V">Volatility 50 (1s) Index</option>
-          <option value="1HZ75V">Volatility 75 (1s) Index</option>
-          <option value="1HZ100V">Volatility 100 (1s) Index</option>
-          <option value="JD10">Jump 10 Index</option>
-          <option value="JD25">Jump 25 Index</option>
-          <option value="JD50">Jump 50 Index</option>
-          <option value="JD75">Jump 75 Index</option>
-          <option value="JD100">Jump 100 Index</option>
-        </select>
-      </div>
-      <div class="atool-field">
-        <label>Trade Type</label>
-        <select id="atoolTradeType" onchange="atoolUpdate()">
-          <option value="even_odd">Even/Odd</option>
-          <option value="rise_fall">Rise/Fall</option>
-          <option value="over_under">Over/Under</option>
-          <option value="digit_freq">Digit Frequency</option>
-        </select>
-      </div>
-    </div>
-    <div class="atool-field" style="margin-top:12px">
-      <label>Number of Ticks to Analyze</label>
-      <input type="number" id="atoolTicks" value="50" min="10" max="1000" onchange="atoolUpdate()" />
-    </div>
-    <div class="atool-price-box">
-      <div class="atool-price-label">CURRENT PRICE</div>
-      <div class="atool-price-val" id="atoolPrice">—</div>
-    </div>
-    <div class="atool-counts-row">
-      <div class="atool-count-box"><span class="atool-count-label">Even</span><span class="atool-count-val" id="atoolEvenCount">—</span></div>
-      <div class="atool-count-box"><span class="atool-count-label">Odd</span><span class="atool-count-val" id="atoolOddCount">—</span></div>
-    </div>
-    <div class="atool-section">
-      <div class="atool-section-title" id="atoolPatternTitle">⊞ Even/Odd Pattern</div>
-      <div class="atool-pattern-row" id="atoolPattern"></div>
-    </div>
-    <div class="atool-section">
-      <div class="atool-section-title">📊 Probability Analysis</div>
-      <div class="atool-prob-bar-wrap">
-        <span class="atool-prob-label" id="atoolProbLabelA">Even</span>
-        <div class="atool-prob-bar-bg"><div class="atool-prob-bar even-bar" id="atoolEvenBar" style="width:50%">50%</div></div>
-      </div>
-      <div class="atool-prob-bar-wrap" style="margin-top:8px">
-        <span class="atool-prob-label" id="atoolProbLabelB">Odd</span>
-        <div class="atool-prob-bar-bg"><div class="atool-prob-bar odd-bar" id="atoolOddBar" style="width:50%">50%</div></div>
-      </div>
-    </div>
-    <div class="atool-section">
-      <div class="atool-section-title">📋 Trading Probability Guide</div>
-      <div class="atool-guide-row">
-        <div class="atool-guide-col">
-          <div class="atool-guide-title">Over Probabilities</div>
-          <table class="atool-table">
-            <tr><th>1</th><th>2</th><th>3</th><th>4</th></tr>
-            <tr><td>90%</td><td>85%</td><td>70%</td><td>60%</td></tr>
-            <tr><th>5</th><th>6</th><th>7</th><th>8</th></tr>
-            <tr><td>55%</td><td>40%</td><td>30%</td><td>25%</td></tr>
-          </table>
+      <div class="atool-wrapper">
+        <h2 class="atool-title">NovaTrade Analysistool 🌐</h2>
+        <div class="atool-top-row">
+          <div class="atool-field">
+            <label>Synthetic Market</label>
+            <select id="atoolMarket" onchange="atoolMarketChange()">
+              <option value="R_10">Volatility 10</option>
+              <option value="R_25">Volatility 25</option>
+              <option value="R_50">Volatility 50</option>
+              <option value="R_75">Volatility 75</option>
+              <option value="R_100">Volatility 100</option>
+              <option value="1HZ10V">Volatility 10 (1s)</option>
+              <option value="1HZ25V">Volatility 25 (1s)</option>
+              <option value="1HZ50V">Volatility 50 (1s)</option>
+              <option value="1HZ75V">Volatility 75 (1s)</option>
+              <option value="1HZ100V">Volatility 100 (1s)</option>
+            </select>
+          </div>
+          <div class="atool-field">
+            <label>Trade Type</label>
+            <select id="atoolTradeType" onchange="atoolUpdate()">
+              <option value="even_odd">Even/Odd</option>
+              <option value="rise_fall">Rise/Fall</option>
+              <option value="over_under">Over/Under</option>
+              <option value="digit_freq">Digit Frequency</option>
+            </select>
+          </div>
         </div>
-        <div class="atool-guide-col">
-          <div class="atool-guide-title">Under Probabilities</div>
-          <table class="atool-table">
-            <tr><th>1</th><th>2</th><th>3</th><th>4</th></tr>
-            <tr><td>25%</td><td>30%</td><td>40%</td><td>55%</td></tr>
-            <tr><th>5</th><th>6</th><th>7</th><th>8</th></tr>
-            <tr><td>60%</td><td>70%</td><td>85%</td><td>90%</td></tr>
-          </table>
+        <div class="atool-field" style="margin-top:12px">
+          <label>Number of Ticks to Analyze</label>
+          <input type="number" id="atoolTicks" value="50" min="10" max="1000" onchange="atoolUpdate()" />
+        </div>
+        <div class="atool-price-box">
+          <div class="atool-price-label">CURRENT PRICE</div>
+          <div class="atool-price-val" id="atoolPrice">—</div>
+        </div>
+        <div class="atool-counts-row">
+          <div class="atool-count-box"><span class="atool-count-label">Even</span><span class="atool-count-val" id="atoolEvenCount">—</span></div>
+          <div class="atool-count-box"><span class="atool-count-label">Odd</span><span class="atool-count-val" id="atoolOddCount">—</span></div>
+        </div>
+        <div class="atool-section">
+          <div class="atool-section-title" id="atoolPatternTitle">⊞ Even/Odd Pattern</div>
+          <div class="atool-pattern-row" id="atoolPattern"></div>
+        </div>
+        <div class="atool-section">
+          <div class="atool-section-title">📊 Probability Analysis</div>
+          <div class="atool-prob-bar-wrap">
+            <span class="atool-prob-label" id="atoolProbLabelA">Even</span>
+            <div class="atool-prob-bar-bg"><div class="atool-prob-bar even-bar" id="atoolEvenBar" style="width:50%">50%</div></div>
+          </div>
+          <div class="atool-prob-bar-wrap" style="margin-top:8px">
+            <span class="atool-prob-label" id="atoolProbLabelB">Odd</span>
+            <div class="atool-prob-bar-bg"><div class="atool-prob-bar odd-bar" id="atoolOddBar" style="width:50%">50%</div></div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="atool-section">
-      <div class="atool-section-title">📶 Signal Strength Guide</div>
-      <table class="atool-table full-width">
-        <tr><th>Pattern</th><th>Even/Odd</th><th>Rise/Fall</th></tr>
-        <tr><td>Strong Signal</td><td>Above 65%</td><td>Above 65%</td></tr>
-        <tr><td>Moderate Signal</td><td>55-65%</td><td>55-65%</td></tr>
-        <tr><td>Weak Signal</td><td>Below 55%</td><td>Below 55%</td></tr>
-      </table>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- NOVA ENGINE TAB                                     -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="analysis-nova" class="analysis-tab-content">
+      <div class="nova-engine-wrap">
+
+        <!-- TOP BAR -->
+        <div class="nova-topbar">
+          <div class="nova-topbar-left">
+            <div class="nova-logo">⚡ NOVA ENGINE</div>
+            <div class="nova-subtitle">Quantum Statistical Analysis</div>
+          </div>
+          <div class="nova-topbar-right">
+            <select id="novaMarket" class="nova-select" onchange="novaMarketChange()">
+              <option value="R_10">Vol 10</option>
+              <option value="R_25">Vol 25</option>
+              <option value="R_50" selected>Vol 50</option>
+              <option value="R_75">Vol 75</option>
+              <option value="R_100">Vol 100</option>
+              <option value="1HZ10V">Vol 10 (1s)</option>
+              <option value="1HZ25V">Vol 25 (1s)</option>
+              <option value="1HZ50V">Vol 50 (1s)</option>
+              <option value="1HZ75V">Vol 75 (1s)</option>
+              <option value="1HZ100V">Vol 100 (1s)</option>
+            </select>
+            <select id="novaTickCount" class="nova-select" onchange="novaTickCountChange()">
+              <option value="100">100 ticks</option>
+              <option value="250">250 ticks</option>
+              <option value="500" selected>500 ticks</option>
+              <option value="1000">1000 ticks</option>
+            </select>
+            <div class="nova-live-badge" id="novaLiveBadge">● CONNECTING</div>
+          </div>
+        </div>
+
+        <!-- CURRENT PRICE HERO -->
+        <div class="nova-price-hero">
+          <div class="nova-price-main" id="novaPriceMain">—</div>
+          <div class="nova-price-meta">
+            <span id="novaLastDigit" class="nova-last-digit">—</span>
+            <span class="nova-price-label">Last Digit</span>
+            <span id="novaTickSpeed" class="nova-tick-speed">— ms/tick</span>
+          </div>
+          <div class="nova-last-digits-row" id="novaLastDigitsRow"></div>
+        </div>
+
+        <!-- MAIN GRID -->
+        <div class="nova-main-grid">
+
+          <!-- COL 1: DIGIT FREQUENCY -->
+          <div class="nova-card nova-card-freq">
+            <div class="nova-card-title">📊 Digit Frequency Analysis</div>
+            <div class="nova-freq-timeframes">
+              <button class="nova-tf-btn active" onclick="novaSetFreqTf(50,this)">50</button>
+              <button class="nova-tf-btn" onclick="novaSetFreqTf(100,this)">100</button>
+              <button class="nova-tf-btn" onclick="novaSetFreqTf(250,this)">250</button>
+              <button class="nova-tf-btn" onclick="novaSetFreqTf(500,this)">500</button>
+            </div>
+            <div class="nova-freq-grid" id="novaFreqGrid"></div>
+            <div class="nova-entropy-row">
+              <div class="nova-entropy-item">
+                <span class="nova-entropy-label">Shannon Entropy</span>
+                <span class="nova-entropy-val" id="novaEntropy">—</span>
+              </div>
+              <div class="nova-entropy-item">
+                <span class="nova-entropy-label">Chi-Square p</span>
+                <span class="nova-entropy-val" id="novaChiSq">—</span>
+              </div>
+              <div class="nova-entropy-item">
+                <span class="nova-entropy-label">Hurst Exp</span>
+                <span class="nova-entropy-val" id="novaHurst">—</span>
+              </div>
+              <div class="nova-entropy-item">
+                <span class="nova-entropy-label">Z-Score Max</span>
+                <span class="nova-entropy-val" id="novaZScore">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- COL 2: MARKOV CHAIN -->
+          <div class="nova-card nova-card-markov">
+            <div class="nova-card-title">🔗 Markov Transition Matrix</div>
+            <div class="nova-markov-subtitle">P(next | current) — last 500 ticks</div>
+            <div class="nova-markov-wrap" id="novaMarkovWrap"></div>
+            <div class="nova-markov-legend">
+              <span style="background:rgba(76,175,80,0.8)">High prob</span>
+              <span style="background:rgba(255,193,7,0.5)">Medium</span>
+              <span style="background:rgba(244,67,54,0.3)">Low prob</span>
+            </div>
+          </div>
+
+          <!-- COL 3: SIGNAL INTELLIGENCE -->
+          <div class="nova-card nova-card-signal">
+            <div class="nova-card-title">🎯 Signal Intelligence</div>
+            <div class="nova-signal-master" id="novaSignalMaster">
+              <div class="nova-signal-loading">Analyzing...</div>
+            </div>
+            <div class="nova-card-title" style="margin-top:16px">⚡ Best Trade Now</div>
+            <div class="nova-best-trade" id="novaBestTrade">
+              <div class="nova-bt-ct" id="novaBtCt">—</div>
+              <div class="nova-bt-barrier" id="novaBtBarrier">—</div>
+              <div class="nova-bt-conf" id="novaBtConf">—% confidence</div>
+              <div class="nova-bt-ev" id="novaBtEv">EV: —</div>
+              <button class="nova-trade-btn" id="novaTradeBtn" onclick="novaExecuteTrade()">PLACE TRADE</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ROW 2: MULTI-TIMEFRAME + PATTERNS + KELLY -->
+        <div class="nova-second-grid">
+
+          <!-- MULTI-TIMEFRAME ANALYSIS -->
+          <div class="nova-card nova-card-mtf">
+            <div class="nova-card-title">⏱ Multi-Timeframe Confluence</div>
+            <div class="nova-mtf-grid" id="novaMtfGrid"></div>
+          </div>
+
+          <!-- STREAK & PATTERN DETECTOR -->
+          <div class="nova-card nova-card-streak">
+            <div class="nova-card-title">🔥 Pattern Detector</div>
+            <div class="nova-streak-grid" id="novaStreakGrid"></div>
+          </div>
+
+          <!-- KELLY + RISK -->
+          <div class="nova-card nova-card-kelly">
+            <div class="nova-card-title">💰 Kelly Criterion & Risk</div>
+            <div class="nova-kelly-grid" id="novaKellyGrid"></div>
+          </div>
+
+        </div>
+
+        <!-- ROW 3: OVER/UNDER TABLE + BARRIER SELECTOR -->
+        <div class="nova-third-grid">
+
+          <!-- FULL BARRIER TABLE -->
+          <div class="nova-card nova-card-barriers">
+            <div class="nova-card-title">📈 Full Barrier Analysis (All 0-9)</div>
+            <div class="nova-barrier-table-wrap" id="novaBarrierTable"></div>
+          </div>
+
+          <!-- MARKET SCANNER -->
+          <div class="nova-card nova-card-scanner">
+            <div class="nova-card-title">🌐 Multi-Market Scanner</div>
+            <div class="nova-scanner-controls">
+              <button class="nova-scan-btn" onclick="novaScanAllMarkets()">⚡ Scan All Markets</button>
+            </div>
+            <div class="nova-scanner-results" id="novaScannerResults">
+              <div class="nova-scan-idle">Click Scan All to rank all 10 markets</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ROW 4: LIVE PATTERN STREAM + AUTOCORRELATION -->
+        <div class="nova-fourth-grid">
+
+          <!-- PATTERN STREAM -->
+          <div class="nova-card nova-card-stream">
+            <div class="nova-card-title">📡 Live Digit Stream</div>
+            <div class="nova-stream-wrap" id="novaStreamWrap"></div>
+          </div>
+
+          <!-- AUTOCORRELATION -->
+          <div class="nova-card nova-card-auto">
+            <div class="nova-card-title">📐 Autocorrelation (Lag 1-20)</div>
+            <canvas id="novaAutoCorCanvas" height="120" style="width:100%"></canvas>
+          </div>
+
+          <!-- REGIME DETECTOR -->
+          <div class="nova-card nova-card-regime">
+            <div class="nova-card-title">🌡 Market Regime</div>
+            <div class="nova-regime-wrap" id="novaRegimeWrap"></div>
+          </div>
+
+        </div>
+
+      </div>
     </div>
-  </div></div>
+
     <div class="run-bar">
       <div class="bot-status-bar" id="botStatusBar">Bot is not running</div>
     </div>
-  
   </section>
     <div id="brun-modal" class="brun-modal-overlay" style="display:none">
       <div class="brun-modal">
