@@ -3009,7 +3009,10 @@ function novaScanAllMarkets() {
   if (el) el.innerHTML = '<div class="nova-scan-idle">Scanning ' + symbols.length + ' markets...</div>';
   var results = [];
   var done = 0;
-  symbols.forEach(function(sym) {
+  // Sequential scanning to avoid WebSocket resource exhaustion
+  function scanNext(idx) {
+    if (idx >= symbols.length) { novaRenderScanResults(results); return; }
+    var sym = symbols[idx];
     var ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
     ws.onopen = function() {
       ws.send(JSON.stringify({ ticks_history: sym, count: 500, end: 'latest', style: 'ticks' }));
@@ -3018,20 +3021,19 @@ function novaScanAllMarkets() {
       var msg = JSON.parse(e.data);
       if (msg.history && msg.history.prices) {
         var ticks = msg.history.prices.map(Number);
-        var dec = 2;
-        var digits = ticks.map(function(p){ return Math.floor(p * Math.pow(10, dec)) % 10; });
+        var digits = ticks.map(function(p){ return Math.floor(p * Math.pow(10, 2)) % 10; });
         var best = novaBestSignal(digits);
         var entropy = novaShannonEntropy(digits.slice(-100));
         var hurst = novaHurst(digits.slice(-100));
         var score = best ? (best.conf * 0.5 + (3.322 - entropy) / 3.322 * 30 + Math.abs(hurst - 0.5) * 40) : 0;
         results.push({ sym: sym, score: score, best: best, entropy: entropy, hurst: hurst });
         ws.close();
-        done++;
-        if (done === symbols.length) novaRenderScanResults(results);
+        scanNext(idx + 1);
       }
     };
-    ws.onerror = function() { done++; ws.close(); if (done === symbols.length) novaRenderScanResults(results); };
-  });
+    ws.onerror = function() { ws.close(); scanNext(idx + 1); };
+  }
+  scanNext(0);
 }
 
 function novaRenderScanResults(results) {
