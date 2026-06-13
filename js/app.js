@@ -2574,7 +2574,8 @@ var nova = {
   scanData: {},
   tradeWsUrl: null,
   tradeWs: null,
-  bestTrade: null
+  bestTrade: null,
+  switching: false
 };
 
 function novaInit() {
@@ -2586,14 +2587,18 @@ function novaInit() {
 function novaMarketChange() {
   nova.market = document.getElementById('novaMarket').value;
   nova.ticks = []; nova.digits = [];
+  nova.switching = true;
   if (nova.ws) { try { nova.ws.close(); } catch(e) {} nova.ws = null; }
+  nova.switching = false;
   novaConnect();
 }
 
 function novaTickCountChange() {
   nova.tickCount = parseInt(document.getElementById('novaTickCount').value) || 500;
   nova.ticks = []; nova.digits = [];
+  nova.switching = true;
   if (nova.ws) { try { nova.ws.close(); } catch(e) {} nova.ws = null; }
+  nova.switching = false;
   novaConnect();
 }
 
@@ -2631,6 +2636,7 @@ function novaConnect() {
     setTimeout(novaConnect, 3000);
   };
   nova.ws.onclose = function() {
+    if (nova.switching) return; // intentional close, don't reconnect
     if (badge) { badge.textContent = '● RECONNECTING'; badge.classList.remove('live'); }
   };
 }
