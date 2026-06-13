@@ -3700,3 +3700,29 @@ function bmdStop() {
   bmdSetStatus('idle', 'Stopped — P&L: ' + (bmd.pnl >= 0 ? '+' : '') + '$' + bmd.pnl.toFixed(2));
   bmdLog('Session stopped. Total P&L: ' + (bmd.pnl >= 0 ? '+' : '') + '$' + bmd.pnl.toFixed(2), 'round');
 }
+
+function bmdUpdateIntel(sym, analysis) {
+  var el = document.getElementById('bmd_intel_grid');
+  if (!el || !analysis) return;
+  var entropy = analysis.entropy;
+  var topMatch = analysis.matchTop[0];
+  var topDiffer = analysis.differTop[0];
+  var regime = entropy < 2.8 ? 'BIASED' : entropy < 3.1 ? 'NORMAL' : 'RANDOM';
+  var regimeColor = regime === 'BIASED' ? '#a78bfa' : regime === 'NORMAL' ? '#fbbf24' : '#ef4444';
+  el.innerHTML = [
+    { label: 'Market Regime', val: regime, color: regimeColor },
+    { label: 'Shannon Entropy', val: entropy.toFixed(3), color: entropy < 2.8 ? '#a78bfa' : '#94a3b8' },
+    { label: 'Best Match Digit', val: topMatch ? topMatch.digit : '—', color: '#4caf50' },
+    { label: 'Match Z-Score', val: topMatch ? (topMatch.z>=0?'+':'') + topMatch.z.toFixed(2) + 'σ' : '—', color: '#4caf50' },
+    { label: 'Best Differ Digit', val: topDiffer ? topDiffer.digit : '—', color: '#f44336' },
+    { label: 'Differ Z-Score', val: topDiffer ? (topDiffer.z>=0?'+':'') + topDiffer.z.toFixed(2) + 'σ' : '—', color: '#f44336' },
+    { label: 'Ticks Analyzed', val: analysis.total, color: '#60a5fa' },
+    { label: 'Market', val: sym, color: '#fbbf24' },
+    { label: 'Chi-Square', val: novaChiSquare(bmd.digits[sym]||[]).p, color: '#a78bfa' }
+  ].map(function(item) {
+    return '<div class="bmd2-intel-item">' +
+      '<span class="bmd2-intel-label">' + item.label + '</span>' +
+      '<span class="bmd2-intel-val" style="color:' + item.color + '">' + item.val + '</span>' +
+    '</div>';
+  }).join('');
+}

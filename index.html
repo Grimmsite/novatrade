@@ -596,110 +596,185 @@
   </section>
 
   <section id="page-bulk-md" class="page">
-    <div class="bmd-wrap">
-      <div class="bmd-header">
-        <div class="bmd-title">⚡ Bulk Matches &amp; Differs</div>
-        <div class="bmd-subtitle">AI scans digit frequency across markets — fires 5 trades simultaneously on strongest signals</div>
-        <div class="ai-status-bar">
-          <span class="ai-dot idle" id="bmdDot"></span>
-          <span id="bmdStatusText">Idle — configure and start</span>
+    <div class="bmd2-wrap">
+
+      <!-- TOP BAR -->
+      <div class="bmd2-topbar">
+        <div class="bmd2-topbar-left">
+          <div class="bmd2-logo">⚡ BULK M&amp;D</div>
+          <div class="bmd2-subtitle">Nova-powered Matches &amp; Differs Engine</div>
+        </div>
+        <div class="bmd2-topbar-right">
+          <select id="bmd_sym" class="nova-select">
+            <option value="auto">🤖 Auto-pick</option>
+            <option value="R_10">Vol 10</option>
+            <option value="R_25">Vol 25</option>
+            <option value="R_50">Vol 50</option>
+            <option value="R_75">Vol 75</option>
+            <option value="R_100">Vol 100</option>
+            <option value="1HZ10V">Vol 10 (1s)</option>
+            <option value="1HZ25V">Vol 25 (1s)</option>
+            <option value="1HZ50V">Vol 50 (1s)</option>
+            <option value="1HZ75V">Vol 75 (1s)</option>
+            <option value="1HZ100V">Vol 100 (1s)</option>
+          </select>
+          <select id="bmd_type" class="nova-select">
+            <optgroup label="Match">
+              <option value="DIGITMATCH">Match — All windows</option>
+              <option value="DIGITMATCH_1000">Match — 1000 ticks</option>
+              <option value="DIGITMATCH_100">Match — 100 ticks</option>
+              <option value="DIGITMATCH_20">Match — 20 ticks</option>
+            </optgroup>
+            <optgroup label="Differ">
+              <option value="DIGITDIFF">Differ — All windows</option>
+              <option value="DIGITDIFF_1000">Differ — 1000 ticks</option>
+              <option value="DIGITDIFF_100">Differ — 100 ticks</option>
+              <option value="DIGITDIFF_20">Differ — 20 ticks</option>
+            </optgroup>
+            <optgroup label="Both">
+              <option value="both">Both — All windows</option>
+            </optgroup>
+          </select>
+          <div class="bmd2-status-badge" id="bmdDot2">
+            <span class="ai-dot idle" id="bmdDot"></span>
+            <span id="bmdStatusText">Idle</span>
+          </div>
         </div>
       </div>
-      <div class="bmd-body">
-        <!-- LEFT: controls -->
-        <div class="bmd-left">
-          <div class="ai-section-title">Market</div>
-          <div class="ai-field">
-            <label>Symbol</label>
-            <select id="bmd_sym" style="width:100%;background:#111;border:1px solid #222;color:#fff;border-radius:6px;padding:6px 10px;font-size:.85rem">
-              <option value="auto">🤖 Auto-pick best market</option>
-              <option value="R_10">Volatility 10</option>
-              <option value="R_25">Volatility 25</option>
-              <option value="R_50">Volatility 50</option>
-              <option value="R_75">Volatility 75</option>
-              <option value="R_100">Volatility 100</option>
-              <option value="1HZ10V">Vol 10 (1s)</option>
-              <option value="1HZ25V">Vol 25 (1s)</option>
-              <option value="1HZ50V">Vol 50 (1s)</option>
-              <option value="1HZ75V">Vol 75 (1s)</option>
-              <option value="1HZ100V">Vol 100 (1s)</option>
-            </select>
+
+      <!-- MAIN GRID -->
+      <div class="bmd2-main">
+
+        <!-- LEFT PANEL: Controls + Stats -->
+        <div class="bmd2-left">
+
+          <!-- Settings Card -->
+          <div class="nova-card" style="margin-bottom:12px">
+            <div class="nova-card-title">⚙ Settings</div>
+            <div class="bmd2-settings">
+              <div class="bmd2-field"><label>Stake / digit ($)</label><input type="number" id="bmd_stake" value="1" min="0.35" step="0.01" class="bmd2-input"></div>
+              <div class="bmd2-field"><label>Rounds</label><input type="number" id="bmd_rounds" value="10" min="1" max="200" class="bmd2-input"></div>
+              <div class="bmd2-field"><label>Stop loss rounds</label><input type="number" id="bmd_stop_loss_rounds" value="3" min="1" max="10" class="bmd2-input"></div>
+              <div class="bmd2-field"><label>Take profit rounds</label><input type="number" id="bmd_tp_rounds" value="5" min="1" max="50" class="bmd2-input"></div>
+              <div class="bmd2-field"><label>Balance protection (%)</label><input type="number" id="bmd_bal_protect" value="20" min="5" max="50" class="bmd2-input"></div>
+              <div class="bmd2-field"><label>Min confidence (%)</label><input type="number" id="bmd_min_conf" value="60" min="40" max="95" class="bmd2-input"></div>
+            </div>
+            <div class="bmd2-btn-row">
+              <button class="nova-trade-btn" id="bmdStartBtn" onclick="bmdStart()" style="flex:1">▶ START</button>
+              <button class="nova-trade-btn" id="bmdStopBtn" onclick="bmdStop()" style="display:none;flex:1;background:linear-gradient(135deg,#7f1d1d,#991b1b)">■ STOP</button>
+            </div>
           </div>
-          <div class="ai-section-title" style="margin-top:14px">Trade Settings</div>
-          <div class="ai-field"><label>Stake per digit ($)</label><input type="number" id="bmd_stake" value="1" min="0.35" step="0.01"></div>
-          <div class="ai-field"><label>Contract Type</label>
-            <select id="bmd_type" style="width:100%;background:#111;border:1px solid #222;color:#fff;border-radius:6px;padding:6px 10px;font-size:.85rem">
-              <optgroup label="── Match">
-                <option value="DIGITMATCH">Match — Combined (all 3 windows)</option>
-                <option value="DIGITMATCH_1000">Match — 1000 ticks only</option>
-                <option value="DIGITMATCH_100">Match — Last 100 ticks</option>
-                <option value="DIGITMATCH_20">Match — Last 20 ticks</option>
-              </optgroup>
-              <optgroup label="── Differ">
-                <option value="DIGITDIFF">Differ — Combined (all 3 windows)</option>
-                <option value="DIGITDIFF_1000">Differ — 1000 ticks only</option>
-                <option value="DIGITDIFF_100">Differ — Last 100 ticks</option>
-                <option value="DIGITDIFF_20">Differ — Last 20 ticks</option>
-              </optgroup>
-              <optgroup label="── Both">
-                <option value="both">Both — Combined (all 3 windows)</option>
-                <option value="both_1000">Both — 1000 ticks only</option>
-                <option value="both_100">Both — Last 100 ticks</option>
-                <option value="both_20">Both — Last 20 ticks</option>
-              </optgroup>
-            </select>
+
+          <!-- Stats Card -->
+          <div class="nova-card" style="margin-bottom:12px">
+            <div class="nova-card-title">📊 Session Stats <span id="bmd_timer" style="float:right;font-weight:400;color:#555;font-size:.7rem"></span></div>
+            <div class="bmd2-stats">
+              <div class="bmd2-stat"><div class="bmd2-stat-val" id="bmd_pnl">$0.00</div><div class="bmd2-stat-lbl">P&amp;L</div></div>
+              <div class="bmd2-stat"><div class="bmd2-stat-val" id="bmd_rounds_done">0</div><div class="bmd2-stat-lbl">Rounds</div></div>
+              <div class="bmd2-stat"><div class="bmd2-stat-val" id="bmd_trades">0</div><div class="bmd2-stat-lbl">Trades</div></div>
+              <div class="bmd2-stat"><div class="bmd2-stat-val" id="bmd_wins">0</div><div class="bmd2-stat-lbl">Wins</div></div>
+              <div class="bmd2-stat"><div class="bmd2-stat-val" id="bmd_losses">0</div><div class="bmd2-stat-lbl">Losses</div></div>
+              <div class="bmd2-stat"><div class="bmd2-stat-val" id="bmd_winrate">0%</div><div class="bmd2-stat-lbl">Win Rate</div></div>
+            </div>
+            <canvas id="bmd_pnl_chart" height="60" style="width:100%;margin-top:10px;border-radius:6px;background:#050508"></canvas>
           </div>
-          <div class="ai-field"><label>Rounds</label><input type="number" id="bmd_rounds" value="10" min="1" max="200" title="Number of 5-trade rounds to run"></div>
-          <div class="ai-field"><label>Stop after losing rounds</label><input type="number" id="bmd_stop_loss_rounds" value="3" min="1" max="10"></div>
-          <div class="ai-field"><label>Take profit after winning rounds</label><input type="number" id="bmd_tp_rounds" value="5" min="1" max="50"></div>
-          <div class="ai-field"><label>Balance Protection (%)</label><input type="number" id="bmd_bal_protect" value="20" min="5" max="50"></div>
-          <div class="ai-field"><label>Min digit confidence (%)</label><input type="number" id="bmd_min_conf" value="60" min="40" max="95" title="Only trade digits above this confidence threshold"></div>
-          <div class="ai-btn-row">
-            <button class="ai-btn-start" id="bmdStartBtn" onclick="bmdStart()">▶ Start</button>
-            <button class="ai-btn-stop" id="bmdStopBtn" onclick="bmdStop()" style="display:none">■ Stop</button>
+
+          <!-- Per-digit performance -->
+          <div class="nova-card">
+            <div class="nova-card-title">🎯 Per-Digit Performance</div>
+            <div class="bmd2-digit-grid">
+              
+              <div class="bmd2-digit-card" id="bmd_dperf_0">
+                <div class="bmd2-digit-num">0</div>
+                <div class="bmd2-dw" id="bmd_dw_0">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_0">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_1">
+                <div class="bmd2-digit-num">1</div>
+                <div class="bmd2-dw" id="bmd_dw_1">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_1">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_2">
+                <div class="bmd2-digit-num">2</div>
+                <div class="bmd2-dw" id="bmd_dw_2">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_2">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_3">
+                <div class="bmd2-digit-num">3</div>
+                <div class="bmd2-dw" id="bmd_dw_3">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_3">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_4">
+                <div class="bmd2-digit-num">4</div>
+                <div class="bmd2-dw" id="bmd_dw_4">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_4">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_5">
+                <div class="bmd2-digit-num">5</div>
+                <div class="bmd2-dw" id="bmd_dw_5">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_5">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_6">
+                <div class="bmd2-digit-num">6</div>
+                <div class="bmd2-dw" id="bmd_dw_6">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_6">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_7">
+                <div class="bmd2-digit-num">7</div>
+                <div class="bmd2-dw" id="bmd_dw_7">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_7">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_8">
+                <div class="bmd2-digit-num">8</div>
+                <div class="bmd2-dw" id="bmd_dw_8">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_8">0L</div>
+              </div>
+              <div class="bmd2-digit-card" id="bmd_dperf_9">
+                <div class="bmd2-digit-num">9</div>
+                <div class="bmd2-dw" id="bmd_dw_9">0W</div>
+                <div class="bmd2-dl" id="bmd_dl_9">0L</div>
+              </div>
+            </div>
           </div>
-          <div class="ai-section-title" style="margin-top:18px">Session Stats <span id="bmd_timer" style="font-size:.75rem;color:#888;float:right"></span></div>
-          <div class="ai-stats-grid">
-            <div class="ai-stat"><div class="ai-stat-val" id="bmd_pnl">$0.00</div><div class="ai-stat-lbl">P&amp;L</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="bmd_rounds_done">0</div><div class="ai-stat-lbl">Rounds</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="bmd_trades">0</div><div class="ai-stat-lbl">Trades</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="bmd_wins">0</div><div class="ai-stat-lbl">Wins</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="bmd_losses">0</div><div class="ai-stat-lbl">Losses</div></div>
-            <div class="ai-stat"><div class="ai-stat-val" id="bmd_winrate">0%</div><div class="ai-stat-lbl">Win Rate</div></div>
-          </div>
-          <canvas id="bmd_pnl_chart" height="70" style="width:100%;margin-top:10px;border-radius:6px;background:#0d0d0d"></canvas>
+
         </div>
-        <!-- RIGHT: analysis + rounds -->
-        <div class="bmd-right">
-          <!-- Digit frequency bar chart -->
-          <div class="bmd-panel">
-            <div class="ai-section-title">Digit Frequency Analysis <span id="bmd_market_label" style="color:#c9a84c;font-size:.75rem;float:right;text-transform:none"></span></div>
-            <div id="bmd_freq_chart" class="bmd-freq-chart">
-              <div class="bmd-freq-loading">Waiting for scan...</div>
+
+        <!-- RIGHT PANEL: Analysis + Logs -->
+        <div class="bmd2-right">
+
+          <!-- Freq Analysis -->
+          <div class="nova-card" style="margin-bottom:12px">
+            <div class="nova-card-title">📈 Digit Frequency Analysis <span id="bmd_market_label" style="float:right;color:#a78bfa;font-weight:400;font-size:.72rem;text-transform:none"></span></div>
+            <div id="bmd_freq_chart" style="min-height:100px">
+              <div style="color:#444;text-align:center;padding:30px;font-size:.8rem">Waiting for scan...</div>
             </div>
-            <div class="bmd-freq-legend">
-              <span class="bmd-legend-match">■ Match candidates</span>
-              <span class="bmd-legend-diff">■ Differ candidates</span>
-              <span class="bmd-legend-neutral">■ Neutral</span>
-            </div>
-          </div>
-          <!-- Per-digit performance tracker -->
-          <div class="bmd-panel" style="margin-top:12px">
-            <div class="ai-section-title">Per-Digit Performance</div>
-            <div id="bmd_digit_perf" class="bmd-digit-perf">
-              <div class="bmd-digit-card" id="bmd_dperf_0"><div class="bmd-digit-num">0</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_0">0W</span><span class="bmd-dl" id="bmd_dl_0">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_1"><div class="bmd-digit-num">1</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_1">0W</span><span class="bmd-dl" id="bmd_dl_1">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_2"><div class="bmd-digit-num">2</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_2">0W</span><span class="bmd-dl" id="bmd_dl_2">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_3"><div class="bmd-digit-num">3</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_3">0W</span><span class="bmd-dl" id="bmd_dl_3">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_4"><div class="bmd-digit-num">4</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_4">0W</span><span class="bmd-dl" id="bmd_dl_4">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_5"><div class="bmd-digit-num">5</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_5">0W</span><span class="bmd-dl" id="bmd_dl_5">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_6"><div class="bmd-digit-num">6</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_6">0W</span><span class="bmd-dl" id="bmd_dl_6">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_7"><div class="bmd-digit-num">7</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_7">0W</span><span class="bmd-dl" id="bmd_dl_7">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_8"><div class="bmd-digit-num">8</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_8">0W</span><span class="bmd-dl" id="bmd_dl_8">0L</span></div></div><div class="bmd-digit-card" id="bmd_dperf_9"><div class="bmd-digit-num">9</div><div class="bmd-digit-stats"><span class="bmd-dw" id="bmd_dw_9">0W</span><span class="bmd-dl" id="bmd_dl_9">0L</span></div></div>
+            <div style="display:flex;gap:16px;margin-top:8px;font-size:.68rem">
+              <span style="color:#4caf50">■ Match candidates</span>
+              <span style="color:#f44336">■ Differ candidates</span>
+              <span style="color:#555">■ Neutral</span>
             </div>
           </div>
-          <!-- Round history cards -->
-          <div class="bmd-panel" style="margin-top:12px">
-            <div class="ai-section-title">Round History</div>
-            <div id="bmd_rounds_log" class="bmd-rounds-log"></div>
+
+          <!-- Nova Intelligence Panel -->
+          <div class="nova-card" style="margin-bottom:12px">
+            <div class="nova-card-title">🧠 Nova Intelligence</div>
+            <div class="bmd2-intel-grid" id="bmd_intel_grid">
+              <div style="color:#444;font-size:.8rem;text-align:center;padding:20px">Start session to see analysis</div>
+            </div>
           </div>
-          <!-- Live log -->
-          <div class="bmd-panel" style="margin-top:12px;flex:1">
-            <div class="ai-section-title">Live Log</div>
-            <div class="ai-log" id="bmd-log" style="max-height:180px"></div>
+
+          <!-- Round history + Live log side by side -->
+          <div class="bmd2-bottom-grid">
+            <div class="nova-card">
+              <div class="nova-card-title">📋 Round History</div>
+              <div id="bmd_rounds_log" style="max-height:200px;overflow-y:auto"></div>
+            </div>
+            <div class="nova-card">
+              <div class="nova-card-title">📡 Live Log</div>
+              <div id="bmd_live_log" style="max-height:200px;overflow-y:auto;font-size:.72rem"></div>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
