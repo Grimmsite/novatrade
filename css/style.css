@@ -3432,3 +3432,61 @@ body {
   overflow-y: auto;
   min-height: 0;
 }
+
+/* NOVA VERDICT */
+.nova-verdict-wrap { display: flex; flex-direction: column; gap: 12px; }
+.nova-verdict-loading { color: #444; font-size: .8rem; text-align: center; padding: 20px; }
+.nova-verdict-card {
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.nova-verdict-label {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.nova-verdict-action {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  letter-spacing: 1px;
+}
+.nova-verdict-reason {
+  font-size: .75rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+.nova-verdict-score {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+.nova-vs-item {
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+.nova-vs-label { display: block; font-size: .6rem; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+.nova-vs-val { font-size: .88rem; font-weight: 700; font-family: monospace; color: #e2e8f0; }
+.nova-sig-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 6px;
+}
+.nova-sig-dot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.nova-sig-dot-label { font-size: .65rem; color: #64748b; flex: 1; }
+.nova-sig-dot-val { font-size: .7rem; font-weight: 700; font-family: monospace; }
