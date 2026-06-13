@@ -3339,3 +3339,75 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* NOVA LAYOUT FIXES */
+#analysis-nova {
+  overflow-y: auto;
+  height: 100%;
+}
+.nova-engine-wrap {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: 60px;
+}
+.nova-main-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding: 14px 16px;
+}
+.nova-second-grid,
+.nova-third-grid,
+.nova-fourth-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding: 0 16px 14px;
+}
+@media (max-width: 1100px) {
+  .nova-main-grid,
+  .nova-second-grid,
+  .nova-third-grid,
+  .nova-fourth-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 680px) {
+  .nova-main-grid,
+  .nova-second-grid,
+  .nova-third-grid,
+  .nova-fourth-grid {
+    grid-template-columns: 1fr;
+    padding: 0 8px 10px;
+  }
+  .nova-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+  }
+  .nova-topbar-right {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .nova-price-hero {
+    padding: 12px;
+    gap: 12px;
+  }
+  .nova-price-main {
+    font-size: 1.6rem;
+  }
+  .nova-freq-grid {
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+  }
+  .nova-markov-table {
+    font-size: .55rem;
+  }
+  .nova-entropy-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .nova-card {
+    padding: 12px;
+  }
+}
