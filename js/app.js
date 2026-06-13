@@ -3775,3 +3775,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
 }
 }
+
+function novaRenderMtf() {
+  var timeframes = [
+    { label: '50 T',  n: 50  },
+    { label: '100 T', n: 100 },
+    { label: '250 T', n: 250 },
+    { label: '500 T', n: 500 }
+  ];
+  var grid = document.getElementById('novaMtfGrid');
+  if (!grid) return;
+  grid.innerHTML = timeframes.map(function(tf) {
+    var sample = nova.digits.slice(-tf.n);
+    if (sample.length < 10) return '';
+    var under8 = sample.filter(function(d){return d < 8;}).length / sample.length * 100;
+    var over1  = sample.filter(function(d){return d > 1;}).length / sample.length * 100;
+    var bias = under8 > 82 ? 'bull' : under8 < 78 ? 'bear' : 'neut';
+    var biasTxt = under8 > 82 ? '↑ UNDER8' : under8 < 78 ? '↓ OVER1' : '— NEUT';
+    return '<div class="nova-mtf-row">' +
+      '<span class="nova-mtf-label">' + tf.label + '</span>' +
+      '<div class="nova-mtf-bar-wrap"><div class="nova-mtf-bar" style="width:' + under8.toFixed(0) + '%;background:' + (bias==='bull'?'#34d399':bias==='bear'?'#ef4444':'#64748b') + '"></div></div>' +
+      '<span class="nova-mtf-val" style="color:' + (bias==='bull'?'#34d399':bias==='bear'?'#ef4444':'#94a3b8') + '">' + under8.toFixed(1) + '%</span>' +
+      '<span class="nova-mtf-signal ' + bias + '">' + biasTxt + '</span>' +
+    '</div>';
+  }).join('');
+}
