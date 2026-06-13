@@ -3800,3 +3800,30 @@ function novaRenderMtf() {
     '</div>';
   }).join('');
 }
+
+function novaRenderStreak() {
+  var digits = nova.digits;
+  if (digits.length < 10) return;
+  var streak = novaStreakAnalysis(digits);
+  var zscores = novaZScores(digits.slice(-200));
+  var hotDigit = zscores.indexOf(Math.max.apply(null, zscores));
+  var coldDigit = zscores.indexOf(Math.min.apply(null, zscores));
+  var grid = document.getElementById('novaStreakGrid');
+  if (!grid) return;
+  var items = [
+    { label: 'Current Digit', val: streak.current, badge: 'streak x' + streak.streak, badgeCls: streak.streak >= 4 ? 'background:rgba(167,139,250,0.2);color:#a78bfa' : 'background:rgba(148,163,184,0.1);color:#64748b' },
+    { label: 'Current Streak', val: 'x' + streak.streak + ' (digit ' + streak.current + ')', badge: streak.streak >= 5 ? 'HOT' : streak.streak >= 3 ? 'ACTIVE' : 'LOW', badgeCls: streak.streak >= 5 ? 'background:rgba(239,68,68,0.2);color:#ef4444' : 'background:rgba(148,163,184,0.1);color:#64748b' },
+    { label: 'Hot Digit', val: hotDigit, badge: '+' + zscores[hotDigit].toFixed(1) + 's', badgeCls: 'background:rgba(239,68,68,0.2);color:#ef4444' },
+    { label: 'Cold Digit', val: coldDigit, badge: zscores[coldDigit].toFixed(1) + 's', badgeCls: 'background:rgba(52,211,153,0.2);color:#34d399' },
+    { label: 'High digits last 5 (8,9)', val: streak.highRun + '/5', badge: streak.highRun >= 3 ? 'CAUTION' : 'OK', badgeCls: streak.highRun >= 3 ? 'background:rgba(239,68,68,0.2);color:#ef4444' : 'background:rgba(52,211,153,0.15);color:#34d399' },
+    { label: 'Low digits last 5 (0,1)', val: streak.lowRun + '/5', badge: streak.lowRun >= 3 ? 'CAUTION' : 'OK', badgeCls: streak.lowRun >= 3 ? 'background:rgba(239,68,68,0.2);color:#ef4444' : 'background:rgba(52,211,153,0.15);color:#34d399' },
+    { label: 'Max Streak (last 50)', val: 'x' + streak.maxStreak, badge: streak.maxStreak >= 6 ? 'NOTABLE' : 'NORMAL', badgeCls: streak.maxStreak >= 6 ? 'background:rgba(251,191,36,0.2);color:#fbbf24' : 'background:rgba(148,163,184,0.1);color:#64748b' }
+  ];
+  grid.innerHTML = items.map(function(item) {
+    return '<div class="nova-streak-item">' +
+      '<span class="nova-streak-label">' + item.label + '</span>' +
+      '<span class="nova-streak-val">' + item.val + '</span>' +
+      '<span class="nova-streak-badge" style="' + item.badgeCls + '">' + item.badge + '</span>' +
+    '</div>';
+  }).join('');
+}
