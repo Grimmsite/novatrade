@@ -3411,3 +3411,24 @@ body {
     padding: 12px;
   }
 }
+
+/* NOVA TAB VISIBILITY FIX */
+.analysis-tabs {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  min-height: 48px;
+}
+.analysis-tabs::-webkit-scrollbar { display: none; }
+#page-analysis {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#page-analysis .analysis-tab-content.active {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
