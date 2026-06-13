@@ -3490,3 +3490,14 @@ body {
 }
 .nova-sig-dot-label { font-size: .65rem; color: #64748b; flex: 1; }
 .nova-sig-dot-val { font-size: .7rem; font-weight: 700; font-family: monospace; }
+
+/* FIX: analysis tabs must not be fixed — was showing on all pages */
+@media (max-width: 640px) {
+  .analysis-tabs {
+    position: relative !important;
+    bottom: auto !important;
+    z-index: 1 !important;
+    border-top: none !important;
+    border-bottom: 1px solid var(--card-border) !important;
+  }
+}
