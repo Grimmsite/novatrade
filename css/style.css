@@ -3501,3 +3501,13 @@ body {
     border-bottom: 1px solid var(--card-border) !important;
   }
 }
+
+/* CRITICAL FIX: page-analysis was always display:flex overriding display:none */
+#page-analysis {
+  display: none;
+}
+#page-analysis.active {
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+}
