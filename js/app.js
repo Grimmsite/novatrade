@@ -3037,9 +3037,6 @@ function novaRenderSignals() {
   nova.bestTrade = best;
   if (best) {
     var ctEl = document.getElementById('novaBtCt'); if (ctEl) ctEl.textContent = best.ct;
-    var barEl = document.getElementById('novaBtBarrier'); if (barEl) barEl.textContent = best.barrier !== null ? 'Barrier: ' + best.barrier : '';
-    var confEl = document.getElementById('novaBtConf'); if (confEl) confEl.textContent = best.conf.toFixed(1) + '% confidence';
-    var evEl = document.getElementById('novaBtEv'); if (evEl) evEl.textContent = 'EV: $' + best.ev.toFixed(4) + ' per $1 stake';
 function updateBannerHeight() {
   var b = document.getElementById('riskBanner');
   var h = (b && b.offsetHeight > 0) ? b.offsetHeight : 0;
@@ -3582,10 +3579,6 @@ function novaRenderKelly() {
     '</div>';
   }).join('');
 }
-document.addEventListener('DOMContentLoaded', function() {
-  updateBannerHeight();
-  window.addEventListener('resize', updateBannerHeight);
-});
 function novaRenderBarriers() {
   var digits = nova.digits.slice(-500);
   if (digits.length < 30) return;
@@ -3768,10 +3761,6 @@ async function novaExecuteTrade() {
   } catch(err) { showToast('Trade failed: ' + err.message); }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  updateBannerHeight();
-  window.addEventListener('resize', updateBannerHeight);
-});
 
 }
 }
